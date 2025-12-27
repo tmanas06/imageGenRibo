@@ -16,17 +16,78 @@ export interface GenerateImageOptions {
   referenceImages?: string[]; // base64 encoded images
 }
 
+// Base pharma context for all themes
+const PHARMA_BASE_CONTEXT = `
+Role: You are a Senior Medical Copywriter and Regulatory Compliance Expert for a Top 10 Indian Pharmaceutical MNC.
+
+Background Data:
+- Onset: 5 mins | Duration: 12 hrs
+- Lung Function: +120ml FEV1 improvement
+- Exacerbation Reduction: 12% - 15%
+- Format: Nebulized Smartules
+
+MANDATORY REGULATORY TEXT (must appear at bottom):
+"For the use of a Registered Medical Practitioner, Hospital, or Laboratory only."
+
+BRANDING RULES:
+- Generic name must be placed immediately below the brand name
+- Generic name font size must be no less than 1/3rd of the brand name size
+
+DESIGN GUIDELINES:
+- Color Palette: Clinical Teal, White, and Professional Blue
+- Use RED only for "Exacerbation Risk" or negative indicators
+- Use GREEN for "Reduction/Improvement" or positive outcomes
+- Typography: Clean, sans-serif fonts (Helvetica or Montserrat style) for modern medical look
+- Patient must appear HEALTHY and ACTIVE (walking, smiling, breathing freely) - NOT sick
+
+DATA VISUALIZATION:
+- All charts must be clearly labeled
+- Bar charts showing 12% and 15% must be labeled as "Moderate COPD" and "Severe COPD" respectively
+`;
+
 // Theme-specific prompt additions
 const THEME_PROMPTS: Record<string, string> = {
   'rapid-sustained-efficacy': `
-Key Theme: Rapid & Sustained Efficacy
+${PHARMA_BASE_CONTEXT}
+
+KEY THEME: Rapid & Sustained Efficacy
 Supporting Claims: "Quick onset of action within 5 mins" and "12 hrs long lasting relief"
 Clinical Significance: Addresses the patient's immediate need for relief while ensuring twice daily (BID) compliance.
+
+DESIGN CONCEPT - SPLIT-SCREEN LAYOUT:
+LEFT SIDE ("The Rapid Pulse"):
+- High-tech digital stopwatch frozen at 05:00 minutes
+- Caption: "Breathe easier, faster"
+- Dynamic, energetic feel
+
+RIGHT SIDE ("The Sustained Peace"):
+- Calm sunset or clock showing 12 Hours
+- Caption: "Reliable control that lasts"
+- Serene, peaceful feel
+
+VISUAL METAPHOR: Show transformation from breathlessness to relief
 `,
   'exacerbation-control': `
-Key Theme: Exacerbation Control
+${PHARMA_BASE_CONTEXT}
+
+KEY THEME: Exacerbation Control
 Supporting Claims: "Reduces exacerbations by 12%-15%"
 Clinical Significance: Critical clinical endpoint for "Group E" (Exacerbators) patients; directly links therapy to disease progression control.
+
+DESIGN CONCEPT:
+VISUAL METAPHOR: Use one of these concepts:
+- "Protective Shield" around the lungs
+- "Lungs under a glass dome" symbolizing protection
+- Shield deflecting exacerbation triggers
+
+BAR CHART REQUIREMENT:
+- Show comparison bars: 12% (Moderate COPD) vs 15% (Severe COPD)
+- Label clearly: "Exacerbation Reduction vs Placebo"
+- Use GREEN for reduction bars
+
+TYPOGRAPHY:
+- Bold headline: "PROTECT AGAINST EXACERBATIONS"
+- Subheadline with the 12-15% claim
 `,
 };
 
@@ -124,7 +185,76 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   const ethnicity = LANGUAGE_ETHNICITY[language] || 'Indian';
   const ethnicityDetails = getEthnicityDetails(language, ethnicity);
 
+  // Build language-specific instruction
+  let languageInstruction = '';
+  if (language === 'Hindi') {
+    languageInstruction = `
+🚨🚨🚨 HIGHEST PRIORITY - MANDATORY LANGUAGE REQUIREMENT 🚨🚨🚨
+
+YOU MUST WRITE ALL TEXT IN HINDI LANGUAGE USING DEVANAGARI SCRIPT (हिन्दी).
+
+❌ DO NOT USE ENGLISH FOR:
+- "Fast Relief" → USE "तेज़ राहत"
+- "Quick Action" → USE "त्वरित कार्रवाई"
+- "Long Lasting" → USE "लंबे समय तक"
+- "Breathe Easy" → USE "आसानी से सांस लें"
+- "Protection" → USE "सुरक्षा"
+- "Control" → USE "नियंत्रण"
+- "Minutes" → USE "मिनट"
+- "Hours" → USE "घंटे"
+- "Relief" → USE "राहत"
+- "Improvement" → USE "सुधार"
+
+✅ ONLY KEEP IN ENGLISH:
+- Brand name (e.g., "Nebzmart-G")
+- Generic drug name (e.g., "Glycopyrronium")
+- Numbers (e.g., "5", "12", "15%")
+
+TRANSLATE THESE COMMON PHRASES:
+- "5 minutes" → "5 मिनट"
+- "12 hours" → "12 घंटे"
+- "Fast acting" → "तेज़ असर"
+- "Long lasting relief" → "लंबे समय तक राहत"
+- "Reduces exacerbations" → "तीव्रता को कम करता है"
+- "For the use of Registered Medical Practitioner" → "पंजीकृत चिकित्सक के उपयोग के लिए"
+
+🚨 THIS IS NON-NEGOTIABLE - ALL VISIBLE TEXT MUST BE IN HINDI SCRIPT 🚨
+`;
+  } else if (language === 'Tamil') {
+    languageInstruction = `
+🚨🚨🚨 HIGHEST PRIORITY - MANDATORY LANGUAGE REQUIREMENT 🚨🚨🚨
+
+YOU MUST WRITE ALL TEXT IN TAMIL LANGUAGE USING TAMIL SCRIPT (தமிழ்).
+
+❌ DO NOT USE ENGLISH FOR:
+- "Fast Relief" → USE "விரைவான நிவாரணம்"
+- "Quick Action" → USE "விரைவான செயல்"
+- "Long Lasting" → USE "நீண்ட நேரம்"
+- "Breathe Easy" → USE "எளிதாக சுவாசிக்கவும்"
+- "Protection" → USE "பாதுகாப்பு"
+- "Control" → USE "கட்டுப்பாடு"
+- "Minutes" → USE "நிமிடங்கள்"
+- "Hours" → USE "மணி நேரம்"
+- "Relief" → USE "நிவாரணம்"
+
+✅ ONLY KEEP IN ENGLISH:
+- Brand name (e.g., "Nebzmart-G")
+- Generic drug name (e.g., "Glycopyrronium")
+- Numbers (e.g., "5", "12", "15%")
+
+TRANSLATE THESE COMMON PHRASES:
+- "5 minutes" → "5 நிமிடங்கள்"
+- "12 hours" → "12 மணி நேரம்"
+- "Fast acting" → "வேகமாக செயல்படும்"
+- "Long lasting relief" → "நீண்ட நேர நிவாரணம்"
+
+🚨 THIS IS NON-NEGOTIABLE - ALL VISIBLE TEXT MUST BE IN TAMIL SCRIPT 🚨
+`;
+  }
+
   fullPrompt = `
+${languageInstruction}
+
 === MANDATORY PATIENT APPEARANCE REQUIREMENT ===
 Target Market: ${language}
 Required Ethnicity: ${ethnicity}
@@ -139,11 +269,6 @@ matching the ${ethnicity} ethnicity described above.
 === END MANDATORY REQUIREMENT ===
 
 ${fullPrompt}`;
-
-  // Add language instruction
-  if (language !== 'English') {
-    fullPrompt = `${fullPrompt}\n\nTRANSLATE EVERYTHING INTO ${language} except anything related to brand, company, generic name, medical terms.`;
-  }
 
   // Build content parts
   const contents: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [

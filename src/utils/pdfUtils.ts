@@ -24,6 +24,7 @@ export async function convertPdfToImages(file: File): Promise<string[]> {
     await page.render({
       canvasContext: context,
       viewport: viewport,
+      canvas: canvas,
     }).promise;
 
     // Convert to base64 (without data URL prefix)

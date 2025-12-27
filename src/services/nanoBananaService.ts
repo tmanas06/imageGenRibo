@@ -70,8 +70,8 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     for (const part of candidate.content.parts) {
       if ('inlineData' in part && part.inlineData) {
         return {
-          imageBase64: part.inlineData.data,
-          mimeType: part.inlineData.mimeType || 'image/png'
+          imageBase64: part.inlineData.data as string,
+          mimeType: (part.inlineData.mimeType || 'image/png') as string
         };
       }
     }

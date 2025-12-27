@@ -1,9 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { LanguageSelect } from './components/LanguageSelect';
+import { BrandSelect } from './components/BrandSelect';
+import { ThemeSelect } from './components/ThemeSelect';
 import { PromptInput } from './components/PromptInput';
 import { ImageOutput } from './components/ImageOutput';
 import { GenerateButton } from './components/GenerateButton';
+import { DarkModeToggle } from './components/DarkModeToggle';
 import { generateImage, isApiConfigured } from './services/nanoBananaService';
 import { processFile } from './utils/pdfUtils';
 
@@ -12,11 +15,26 @@ function App() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [language, setLanguage] = useState('English');
+  const [brand, setBrand] = useState('glenmark');
+  const [theme, setTheme] = useState('all');
   const [prompt, setPrompt] = useState('');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState('image/png');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   const handleFileSelect = useCallback(async (selectedFile: File) => {
     setFile(selectedFile);
@@ -32,7 +50,8 @@ function App() {
       setPreviewUrls(urls);
     } catch (err) {
       console.error('Error processing file:', err);
-      setError('Failed to process the uploaded file.');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to process file: ${errorMessage}`);
       setPreviewUrls([]);
       setReferenceImages([]);
     }
@@ -57,6 +76,8 @@ function App() {
       const result = await generateImage({
         prompt: prompt.trim(),
         language,
+        brand,
+        theme,
         referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
       });
 
@@ -68,25 +89,34 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [prompt, language, referenceImages]);
+  }, [prompt, language, brand, theme, referenceImages]);
 
   const canGenerate = prompt.trim().length > 0 && !isLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+    <div className={`min-h-screen py-8 px-4 transition-colors duration-300 ${
+      isDarkMode
+        ? 'bg-gradient-to-br from-gray-900 to-gray-800'
+        : 'bg-gradient-to-br from-gray-50 to-gray-100'
+    }`}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            RIBOTR
-          </h1>
-          <p className="text-gray-600">
-            AI Image Generator powered by Nano Banana Pro
-          </p>
+        <div className="flex justify-between items-start mb-8">
+          <div className="flex-1 text-center">
+            <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              RIBOTR
+            </h1>
+            <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+              AI Image Generator powered by Nano Banana Pro
+            </p>
+          </div>
+          <DarkModeToggle isDark={isDarkMode} onToggle={() => setIsDarkMode(!isDarkMode)} />
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+        <div className={`rounded-2xl shadow-xl p-6 md:p-8 transition-colors duration-300 ${
+          isDarkMode ? 'bg-gray-800' : 'bg-white'
+        }`}>
           {/* API Warning */}
           {!isApiConfigured() && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
@@ -121,6 +151,18 @@ function App() {
             />
           </div>
 
+          {/* Brand & Theme Selects */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <BrandSelect
+              value={brand}
+              onChange={setBrand}
+            />
+            <ThemeSelect
+              value={theme}
+              onChange={setTheme}
+            />
+          </div>
+
           {/* Prompt Input */}
           <div className="mb-6">
             <PromptInput
@@ -147,7 +189,7 @@ function App() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-xs text-gray-400">
+        <div className={`text-center mt-6 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
           Powered by Google Gemini &middot; Nano Banana Pro
         </div>
       </div>

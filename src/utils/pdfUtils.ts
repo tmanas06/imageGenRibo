@@ -1,7 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set worker source
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set worker source - use unpkg for reliable CDN
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 /**
  * Convert a PDF file to an array of base64 images (one per page)
@@ -21,11 +21,12 @@ export async function convertPdfToImages(file: File): Promise<string[]> {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
 
-    await page.render({
+    const renderContext = {
       canvasContext: context,
       viewport: viewport,
-      canvas: canvas,
-    }).promise;
+    };
+
+    await page.render(renderContext as any).promise;
 
     // Convert to base64 (without data URL prefix)
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9);

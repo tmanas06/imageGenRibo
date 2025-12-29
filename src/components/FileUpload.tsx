@@ -4,9 +4,10 @@ interface FileUploadProps {
   onFileSelect: (file: File) => void;
   file: File | null;
   previewUrls: string[];
+  isDarkMode?: boolean;
 }
 
-export function FileUpload({ onFileSelect, file, previewUrls }: FileUploadProps) {
+export function FileUpload({ onFileSelect, file, previewUrls, isDarkMode = false }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -41,6 +42,22 @@ export function FileUpload({ onFileSelect, file, previewUrls }: FileUploadProps)
     return validTypes.includes(file.type) || file.name.toLowerCase().endsWith('.pdf');
   };
 
+  const getDropzoneClasses = () => {
+    if (isDragging) {
+      return isDarkMode
+        ? 'border-indigo-400 bg-indigo-900/30'
+        : 'border-indigo-400 bg-indigo-50';
+    }
+    if (file) {
+      return isDarkMode
+        ? 'border-emerald-500/50 bg-emerald-900/20'
+        : 'border-emerald-300 bg-emerald-50/50';
+    }
+    return isDarkMode
+      ? 'border-slate-600 bg-slate-700/50 hover:bg-slate-700 hover:border-slate-500'
+      : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 hover:border-slate-300';
+  };
+
   return (
     <div className="w-full">
       <label
@@ -48,15 +65,10 @@ export function FileUpload({ onFileSelect, file, previewUrls }: FileUploadProps)
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`
-          flex flex-col items-center justify-center w-full min-h-[160px] p-6
-          border-2 border-dashed rounded-xl cursor-pointer
+          flex flex-col items-center justify-center w-full min-h-[180px] p-6
+          border-2 border-dashed rounded-lg cursor-pointer
           transition-all duration-200
-          ${isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : file
-              ? 'border-green-400 bg-green-50'
-              : 'border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-gray-400'
-          }
+          ${getDropzoneClasses()}
         `}
       >
         <input
@@ -68,33 +80,38 @@ export function FileUpload({ onFileSelect, file, previewUrls }: FileUploadProps)
 
         {!file ? (
           <>
-            <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p className="text-sm text-gray-600 font-medium">
-              Drop reference image/PDF here
+            <div className={`w-12 h-12 mb-4 rounded-full flex items-center justify-center ${
+              isDarkMode ? 'bg-slate-600' : 'bg-slate-100'
+            }`}>
+              <svg className={`w-6 h-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+            <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              Drop your file here or click to browse
             </p>
-            <p className="text-xs text-gray-400 mt-1">
-              or click to browse (optional - for style reference)
-            </p>
-            <p className="text-xs text-gray-400 mt-2">
-              Supports: PDF, PNG, JPG, WEBP
+            <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              PDF, PNG, JPG, WEBP supported
             </p>
           </>
         ) : (
           <div className="w-full">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                isDarkMode ? 'bg-emerald-900/50' : 'bg-emerald-100'
+              }`}>
+                <svg className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span className="text-sm font-medium text-gray-700 truncate max-w-[200px]">
-                  {file.name}
-                </span>
               </div>
-              <span className="text-xs text-gray-400">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-              </span>
+              <div className="min-w-0 flex-1">
+                <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                  {file.name}
+                </p>
+                <p className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
             </div>
 
             {previewUrls.length > 0 && (
@@ -104,19 +121,23 @@ export function FileUpload({ onFileSelect, file, previewUrls }: FileUploadProps)
                     key={index}
                     src={url}
                     alt={`Preview ${index + 1}`}
-                    className="h-20 w-20 object-cover rounded-lg border border-gray-200"
+                    className={`h-16 w-16 object-cover rounded-lg border flex-shrink-0 ${
+                      isDarkMode ? 'border-slate-600' : 'border-slate-200'
+                    }`}
                   />
                 ))}
                 {previewUrls.length > 4 && (
-                  <div className="h-20 w-20 flex items-center justify-center bg-gray-100 rounded-lg border border-gray-200">
-                    <span className="text-sm text-gray-500">+{previewUrls.length - 4}</span>
+                  <div className={`h-16 w-16 flex items-center justify-center rounded-lg border flex-shrink-0 ${
+                    isDarkMode ? 'bg-slate-700 border-slate-600' : 'bg-slate-100 border-slate-200'
+                  }`}>
+                    <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>+{previewUrls.length - 4}</span>
                   </div>
                 )}
               </div>
             )}
 
-            <p className="text-xs text-gray-400 mt-2 text-center">
-              Click to replace file
+            <p className={`text-xs mt-3 text-center ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+              Click to replace
             </p>
           </div>
         )}

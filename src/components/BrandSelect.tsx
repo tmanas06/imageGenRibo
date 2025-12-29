@@ -1,6 +1,7 @@
 interface BrandSelectProps {
   value: string;
   onChange: (brand: string) => void;
+  isDarkMode?: boolean;
 }
 
 const BRANDS = [
@@ -8,22 +9,24 @@ const BRANDS = [
   { code: 'lupin', name: 'Lupin' },
 ];
 
-export function BrandSelect({ value, onChange }: BrandSelectProps) {
+export function BrandSelect({ value, onChange, isDarkMode = false }: BrandSelectProps) {
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className={`block text-xs font-medium mb-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
         Brand
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl
-                   text-gray-700 text-sm font-medium
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                   transition-all duration-200
+        className={`w-full px-3 py-2.5 border rounded-lg text-sm
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400
+                   transition-all duration-150
                    cursor-pointer appearance-none
-                   bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')]
-                   bg-no-repeat bg-[right_12px_center] bg-[length:20px]"
+                   bg-no-repeat bg-[right_10px_center] bg-[length:16px]
+                   ${isDarkMode
+                     ? 'bg-slate-700 border-slate-600 text-slate-200 bg-[url(\'data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E\')]'
+                     : 'bg-white border-slate-200 text-slate-800 bg-[url(\'data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E\')]'
+                   }`}
       >
         {BRANDS.map((brand) => (
           <option key={brand.code} value={brand.code}>

@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
-import { LanguageSelect } from './components/LanguageSelect';
-import { BrandSelect } from './components/BrandSelect';
+import { CompanySelect } from './components/CompanySelect';
+import { BrandSelect, getProductsByCompany } from './components/BrandSelect';
 import { ThemeSelect } from './components/ThemeSelect';
+import { LanguageSelect } from './components/LanguageSelect';
 import { ImageOutput } from './components/ImageOutput';
 import { GenerateButton } from './components/GenerateButton';
 import { generateImage, isApiConfigured } from './services/nanoBananaService';
@@ -14,9 +15,10 @@ function App() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
-  const [language, setLanguage] = useState('English');
-  const [brand, setBrand] = useState('glenmark');
+  const [company, setCompany] = useState('lupin');
+  const [brand, setBrand] = useState('ajaduo');
   const [theme, setTheme] = useState('all');
+  const [language, setLanguage] = useState('English');
   const [prompt] = useState(FIXED_PROMPT);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState('image/png');
@@ -31,14 +33,23 @@ function App() {
     localStorage.setItem('lblDarkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
+  // When company changes, update brand to first product of that company
+  const handleCompanyChange = useCallback((newCompany: string) => {
+    setCompany(newCompany);
+    const products = getProductsByCompany(newCompany);
+    if (products.length > 0) {
+      setBrand(products[0].code);
+    }
+  }, []);
+
   const handleFileSelect = useCallback(async (selectedFile: File) => {
     setFile(selectedFile);
     setError(null);
 
     try {
-      const base64Images = await processFile(selectedFile);
-      setReferenceImages(base64Images);
-      const urls = base64Images.map(base64 => `data:image/jpeg;base64,${base64}`);
+      const result = await processFile(selectedFile);
+      setReferenceImages(result.images);
+      const urls = result.images.map(base64 => `data:image/jpeg;base64,${base64}`);
       setPreviewUrls(urls);
     } catch (err) {
       console.error('Error processing file:', err);
@@ -67,9 +78,10 @@ function App() {
     try {
       const result = await generateImage({
         prompt: prompt.trim(),
-        language,
+        company,
         brand,
         theme,
+        language,
         referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
       });
 
@@ -81,7 +93,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [prompt, language, brand, theme, referenceImages]);
+  }, [prompt, company, brand, theme, language, referenceImages]);
 
   const canGenerate = prompt.trim().length > 0 && !isLoading;
 
@@ -124,7 +136,7 @@ function App() {
                 ? 'text-indigo-300 bg-indigo-900/50'
                 : 'text-indigo-700 bg-indigo-50'
             }`}>
-              Powered by Gemini
+              
             </span>
           </div>
         </div>
@@ -185,20 +197,29 @@ function App() {
                 <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Configure output parameters</p>
               </div>
               <div className="p-6 space-y-5">
-                <LanguageSelect
-                  value={language}
-                  onChange={setLanguage}
-                  isDarkMode={isDarkMode}
-                />
                 <div className="grid grid-cols-2 gap-4">
+                  <CompanySelect
+                    value={company}
+                    onChange={handleCompanyChange}
+                    isDarkMode={isDarkMode}
+                  />
                   <BrandSelect
                     value={brand}
                     onChange={setBrand}
+                    company={company}
+                    onCompanyChange={setCompany}
                     isDarkMode={isDarkMode}
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <ThemeSelect
                     value={theme}
                     onChange={setTheme}
+                    isDarkMode={isDarkMode}
+                  />
+                  <LanguageSelect
+                    value={language}
+                    onChange={setLanguage}
                     isDarkMode={isDarkMode}
                   />
                 </div>

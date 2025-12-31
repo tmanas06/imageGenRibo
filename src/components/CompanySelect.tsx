@@ -1,53 +1,23 @@
-interface BrandSelectProps {
+interface CompanySelectProps {
   value: string;
-  onChange: (brand: string) => void;
-  company: string;
-  onCompanyChange?: (company: string) => void;
+  onChange: (company: string) => void;
   isDarkMode?: boolean;
 }
 
-export interface Product {
-  code: string;
-  name: string;
-  company: string;
-}
-
-export const PRODUCTS: Product[] = [
-  { code: 'ajaduo', name: 'Ajaduo', company: 'lupin' },
-  { code: 'alphacept', name: 'Alphacept', company: 'lupin' },
-  { code: 'nebzmart', name: 'Nebzmart', company: 'glenmark' },
-  { code: 'vilor', name: 'Vilor', company: 'glenmark' },
+const COMPANIES = [
+  { code: 'lupin', name: 'Lupin' },
+  { code: 'glenmark', name: 'Glenmark' },
 ];
 
-export function getProductsByCompany(company: string): Product[] {
-  return PRODUCTS.filter(p => p.company === company);
-}
-
-export function getCompanyByProduct(productCode: string): string | null {
-  const product = PRODUCTS.find(p => p.code === productCode);
-  return product ? product.company : null;
-}
-
-export function BrandSelect({ value, onChange, company, onCompanyChange, isDarkMode = false }: BrandSelectProps) {
-  const filteredProducts = getProductsByCompany(company);
-
-  const handleChange = (productCode: string) => {
-    onChange(productCode);
-    // Auto-select company based on product
-    const productCompany = getCompanyByProduct(productCode);
-    if (productCompany && onCompanyChange && productCompany !== company) {
-      onCompanyChange(productCompany);
-    }
-  };
-
+export function CompanySelect({ value, onChange, isDarkMode = false }: CompanySelectProps) {
   return (
     <div className="w-full">
       <label className={`block text-xs font-medium mb-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-        Product
+        Company
       </label>
       <select
         value={value}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         className={`w-full px-3 py-2.5 border rounded-lg text-sm
                    focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400
                    transition-all duration-150
@@ -58,9 +28,9 @@ export function BrandSelect({ value, onChange, company, onCompanyChange, isDarkM
                      : 'bg-white border-slate-200 text-slate-800 bg-[url(\'data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E\')]'
                    }`}
       >
-        {filteredProducts.map((product) => (
-          <option key={product.code} value={product.code}>
-            {product.name}
+        {COMPANIES.map((company) => (
+          <option key={company.code} value={company.code}>
+            {company.name}
           </option>
         ))}
       </select>

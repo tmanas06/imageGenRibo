@@ -5,8 +5,8 @@ interface ThemeSelectProps {
 }
 
 const THEMES = [
-  { code: 'all', name: 'All Themes' },
-  { code: 'rapid-sustained-efficacy', name: 'Rapid & Sustained Efficacy' },
+  { code: 'all', name: 'All' },
+  { code: 'rapid-sustainable-efficacy', name: 'Rapid & sustainable efficacy' },
   { code: 'exacerbation-control', name: 'Exacerbation Control' },
 ];
 

@@ -55,16 +55,78 @@ export async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
+ * Extract text from PDF to find brand/product name
+ */
+export async function extractTextFromPdf(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => item.str)
+      .join(' ');
+    fullText += pageText + ' ';
+  }
+
+  return fullText;
+}
+
+/**
+ * Extract brand/product name from PDF text
+ */
+export function extractBrandName(text: string): string | null {
+  // Known pharma brand patterns - commonly end with specific suffixes
+  const brandPatterns = [
+    /\b([A-Z][a-z]+(?:cept|mart|zole|pril|sartan|statin|mab|nib|tide|pine|pam|lam|done|one|ine|ate|ide)(?:-[A-Z])?)\b/gi,
+    /\b(Alphacept|Nebzmart|Ajaduo|Formoterol|Glycopyrronium)\b/gi,
+  ];
+
+  for (const pattern of brandPatterns) {
+    const matches = text.match(pattern);
+    if (matches && matches.length > 0) {
+      // Return the first match, cleaned up
+      return matches[0].trim();
+    }
+  }
+
+  // Try to find capitalized product names (often at the start or prominently displayed)
+  const capitalizedPattern = /\b([A-Z][a-z]+(?:-[A-Z])?)\s*(?:®|™|\(R\)|\(TM\))?/g;
+  const capitalMatches = text.match(capitalizedPattern);
+  if (capitalMatches && capitalMatches.length > 0) {
+    // Filter out common words
+    const commonWords = ['The', 'For', 'Use', 'Only', 'With', 'And', 'From', 'This', 'That', 'Medical', 'Practitioner', 'Hospital', 'Laboratory'];
+    const filtered = capitalMatches.filter(m => !commonWords.includes(m.trim()));
+    if (filtered.length > 0) {
+      return filtered[0].trim();
+    }
+  }
+
+  return null;
+}
+
+export interface ProcessFileResult {
+  images: string[];
+  brandName: string | null;
+}
+
+/**
  * Process uploaded file - handles both PDF and images
  */
-export async function processFile(file: File): Promise<string[]> {
+export async function processFile(file: File): Promise<ProcessFileResult> {
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
   if (isPdf) {
-    return await convertPdfToImages(file);
+    const images = await convertPdfToImages(file);
+    const text = await extractTextFromPdf(file);
+    const brandName = extractBrandName(text);
+    return { images, brandName };
   } else {
     const base64 = await fileToBase64(file);
-    return [base64];
+    // For images, we can't extract text, so brandName is null
+    return { images: [base64], brandName: null };
   }
 }
 

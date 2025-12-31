@@ -10,9 +10,10 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export interface GenerateImageOptions {
   prompt: string;
-  language: string;
+  company: string;
   brand: string;
   theme: string;
+  language: string;
   referenceImages?: string[]; // base64 encoded images
 }
 
@@ -47,7 +48,7 @@ DATA VISUALIZATION:
 
 // Theme-specific prompt additions
 const THEME_PROMPTS: Record<string, string> = {
-  'rapid-sustained-efficacy': `
+  'rapid-sustainable-efficacy': `
 ${PHARMA_BASE_CONTEXT}
 
 KEY THEME: Rapid & Sustained Efficacy
@@ -93,61 +94,51 @@ TYPOGRAPHY:
 
 // Language to ethnicity mapping for patient representation
 const LANGUAGE_ETHNICITY: Record<string, string> = {
-  'English': 'Western/Caucasian',
-  'Hindi': 'Indian',
-  'Tamil': 'South Indian',
+  'English': 'Modern Indian Urban',
+  'Hindi': 'Rural North Indian Village',
+  'Tamil': 'Rural South Indian Village',
 };
 
 // Detailed ethnicity descriptions for accurate patient generation
 function getEthnicityDetails(language: string, ethnicity: string): string {
   const details: Record<string, string> = {
-    'Hindi': `- Brown/wheatish skin tone typical of North India
+    'Hindi': `⛔ COMPLETELY IGNORE THE PERSON IN THE REFERENCE IMAGE - DO NOT COPY THEM ⛔
+
+GENERATE A COMPLETELY NEW PERSON WITH THESE CHARACTERISTICS:
+- Brown/wheatish skin tone typical of rural North India
 - Indian facial features (oval face, dark eyes, dark hair)
-- Could wear traditional or modern Indian attire
-- Typical North Indian appearance`,
-    'Tamil': `- Darker brown skin tone typical of Tamil Nadu
+- MUST look like a VILLAGE person - a FARMER or RURAL WORKER
+- Simple, humble, POOR rural appearance
+- MUST wear traditional Indian VILLAGE attire:
+  * For men: Simple white/cream kurta-pajama, dhoti, or lungi
+  * For women: Simple cotton saree (not silk/fancy), no heavy jewelry
+- Weather-worn face, sun-tanned skin, hardworking appearance
+- Natural, unpolished look - NO fancy styling or grooming
+- Could have wrinkles, rough hands, simple appearance
+- Think: Indian village farmer, agricultural worker, rural laborer
+- AVOID: Western clothes, modern styling, urban sophistication, formal wear, suits, ties
+
+🚫 DO NOT: Copy the person from the PDF/reference image
+✅ DO: Generate a NEW rural North Indian villager`,
+    'Tamil': `- Darker brown skin tone typical of rural Tamil Nadu villages
 - South Indian facial features (broader nose, dark complexion)
 - Dark black hair, dark brown/black eyes
-- Distinctly South Indian/Dravidian appearance`,
-    'Telugu': `- Medium to dark brown skin tone typical of Andhra/Telangana
-- South Indian facial features
-- Dark hair, dark eyes
-- Telugu/South Indian appearance`,
-    'Kannada': `- Medium brown skin tone typical of Karnataka
-- South Indian facial features
-- Dark hair, dark eyes
-- Kannadiga appearance`,
-    'Malayalam': `- Dark brown skin tone typical of Kerala
-- South Indian/Malayali facial features
-- Dark hair, dark eyes
-- Kerala/Malayali appearance`,
-    'Bengali': `- Fair to medium brown skin typical of Bengal
-- Bengali facial features (slightly elongated face)
-- Dark hair, dark eyes
-- East Indian/Bengali appearance`,
-    'English': `- Fair/light skin tone
-- Western/Caucasian facial features
-- Could have various hair colors (brown, blonde)
-- European/Western appearance`,
-    'Chinese': `- Light/fair East Asian skin tone
-- Chinese facial features (monolid eyes, straight black hair)
-- East Asian appearance`,
-    'Japanese': `- Fair East Asian skin tone
-- Japanese facial features
-- Straight black hair
-- Japanese appearance`,
-    'Russian': `- Very fair/pale skin tone
-- Slavic facial features
-- Could have light hair (blonde, light brown) and light eyes
-- Russian/Slavic appearance`,
-    'Arabic': `- Olive to light brown skin tone
-- Middle Eastern facial features
-- Dark hair, dark eyes
-- Arab/Middle Eastern appearance`,
-    'Spanish': `- Olive to tan skin tone
-- Hispanic/Latino facial features
-- Dark hair, dark eyes
-- Latin American appearance`,
+- MUST look like a VILLAGE person from Tamil Nadu, NOT city/urban
+- Simple, humble, rural South Indian appearance
+- Traditional village attire (simple cotton veshti/dhoti for men, cotton saree for women)
+- Weather-worn, hardworking appearance typical of South Indian villages
+- Natural, unpolished look
+- Distinctly South Indian/Dravidian village appearance
+- AVOID: Western clothes, modern styling, urban sophistication`,
+    'English': `- Fair/wheatish skin tone (Indian fair complexion)
+- Modern, urban Indian appearance
+- MUST look like a CITY person - educated, professional
+- Modern Indian urban attire (smart casuals, formal wear)
+- Well-groomed, polished appearance
+- Could be from metro cities like Mumbai, Delhi, Bangalore
+- Sophisticated, educated professional look
+- Clean, modern styling
+- Urban Indian middle-class or upper-middle-class appearance`,
   };
 
   return details[language] || details['Hindi'] || `- ${ethnicity} appearance with appropriate skin tone and facial features`;
@@ -166,7 +157,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     throw new Error('API key not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
   }
 
-  const { prompt, language, brand, theme, referenceImages } = options;
+  const { prompt, company, brand, theme, language, referenceImages } = options;
 
   // Build the full prompt with theme, brand, and language instructions
   let fullPrompt = prompt;
@@ -176,9 +167,12 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     fullPrompt = `${fullPrompt}\n\n${THEME_PROMPTS[theme]}`;
   }
 
-  // Add brand context
+  // Add company and product context
+  if (company) {
+    fullPrompt = `Company: ${company.charAt(0).toUpperCase() + company.slice(1)}\n\n${fullPrompt}`;
+  }
   if (brand) {
-    fullPrompt = `Brand: ${brand.charAt(0).toUpperCase() + brand.slice(1)}\n\n${fullPrompt}`;
+    fullPrompt = `Product: ${brand.charAt(0).toUpperCase() + brand.slice(1)}\n\n${fullPrompt}`;
   }
 
   // Add patient ethnicity instruction based on language - MUST be at the start for emphasis
@@ -186,89 +180,170 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
   const ethnicityDetails = getEthnicityDetails(language, ethnicity);
 
   // Build language-specific instruction
+  const brandName = brand.charAt(0).toUpperCase() + brand.slice(1);
   let languageInstruction = '';
+
   if (language === 'Hindi') {
     languageInstruction = `
-🚨🚨🚨 HIGHEST PRIORITY - MANDATORY LANGUAGE REQUIREMENT 🚨🚨🚨
+🚨🚨🚨 CRITICAL - MANDATORY HINDI LANGUAGE REQUIREMENT 🚨🚨🚨
 
-YOU MUST WRITE ALL TEXT IN HINDI LANGUAGE USING DEVANAGARI SCRIPT (हिन्दी).
+⚠️⚠️⚠️ OUTPUT LANGUAGE: HINDI (हिन्दी) - DEVANAGARI SCRIPT ONLY ⚠️⚠️⚠️
 
-❌ DO NOT USE ENGLISH FOR:
-- "Fast Relief" → USE "तेज़ राहत"
-- "Quick Action" → USE "त्वरित कार्रवाई"
-- "Long Lasting" → USE "लंबे समय तक"
-- "Breathe Easy" → USE "आसानी से सांस लें"
-- "Protection" → USE "सुरक्षा"
-- "Control" → USE "नियंत्रण"
-- "Minutes" → USE "मिनट"
-- "Hours" → USE "घंटे"
-- "Relief" → USE "राहत"
-- "Improvement" → USE "सुधार"
+THIS IS THE #1 PRIORITY INSTRUCTION. EVERY SINGLE TEXT ELEMENT MUST BE IN HINDI.
 
-✅ ONLY KEEP IN ENGLISH:
-- Brand name (e.g., "Nebzmart-G")
-- Generic drug name (e.g., "Glycopyrronium")
-- Numbers (e.g., "5", "12", "15%")
+CURRENT PRODUCT: ${brandName}
 
-TRANSLATE THESE COMMON PHRASES:
-- "5 minutes" → "5 मिनट"
-- "12 hours" → "12 घंटे"
-- "Fast acting" → "तेज़ असर"
-- "Long lasting relief" → "लंबे समय तक राहत"
-- "Reduces exacerbations" → "तीव्रता को कम करता है"
-- "For the use of Registered Medical Practitioner" → "पंजीकृत चिकित्सक के उपयोग के लिए"
+📝 MANDATORY TRANSLATIONS - USE THESE EXACT HINDI WORDS:
 
-🚨 THIS IS NON-NEGOTIABLE - ALL VISIBLE TEXT MUST BE IN HINDI SCRIPT 🚨
+| English | Hindi (USE THIS) |
+|---------|------------------|
+| Fast Relief | तेज़ राहत |
+| Quick Action | त्वरित कार्रवाई |
+| Long Lasting | लंबे समय तक |
+| Breathe Easy | आसानी से सांस लें |
+| Protection | सुरक्षा |
+| Control | नियंत्रण |
+| Minutes | मिनट |
+| Hours | घंटे |
+| Relief | राहत |
+| Improvement | सुधार |
+| Effective | प्रभावी |
+| Treatment | उपचार |
+| Patient | रोगी |
+| Doctor | चिकित्सक |
+| 5 minutes | 5 मिनट |
+| 12 hours | 12 घंटे |
+| Fast acting | तेज़ असर |
+| Long lasting relief | लंबे समय तक राहत |
+| Reduces exacerbations | तीव्रता को कम करता है |
+| For the use of Registered Medical Practitioner | पंजीकृत चिकित्सक के उपयोग के लिए |
+| Hospital | अस्पताल |
+| Laboratory | प्रयोगशाला |
+
+✅ KEEP IN ENGLISH (DO NOT TRANSLATE):
+- Product/Brand name: "${brandName}" (keep exactly as is)
+- Generic drug names (chemical names)
+- Numbers and percentages (5, 12, 15%)
+- Company name
+
+❌ FORBIDDEN - DO NOT DO THIS:
+- Writing headlines in English
+- Writing claims in English
+- Writing any descriptive text in English
+- Using Roman/Latin script for Hindi words
+
+🔴 EVERY HEADLINE, EVERY CLAIM, EVERY DESCRIPTION = HINDI SCRIPT (देवनागरी) 🔴
 `;
   } else if (language === 'Tamil') {
     languageInstruction = `
-🚨🚨🚨 HIGHEST PRIORITY - MANDATORY LANGUAGE REQUIREMENT 🚨🚨🚨
+🚨🚨🚨 CRITICAL - MANDATORY TAMIL LANGUAGE REQUIREMENT 🚨🚨🚨
 
-YOU MUST WRITE ALL TEXT IN TAMIL LANGUAGE USING TAMIL SCRIPT (தமிழ்).
+⚠️⚠️⚠️ OUTPUT LANGUAGE: TAMIL (தமிழ்) - TAMIL SCRIPT ONLY ⚠️⚠️⚠️
 
-❌ DO NOT USE ENGLISH FOR:
-- "Fast Relief" → USE "விரைவான நிவாரணம்"
-- "Quick Action" → USE "விரைவான செயல்"
-- "Long Lasting" → USE "நீண்ட நேரம்"
-- "Breathe Easy" → USE "எளிதாக சுவாசிக்கவும்"
-- "Protection" → USE "பாதுகாப்பு"
-- "Control" → USE "கட்டுப்பாடு"
-- "Minutes" → USE "நிமிடங்கள்"
-- "Hours" → USE "மணி நேரம்"
-- "Relief" → USE "நிவாரணம்"
+THIS IS THE #1 PRIORITY INSTRUCTION. EVERY SINGLE TEXT ELEMENT MUST BE IN TAMIL.
 
-✅ ONLY KEEP IN ENGLISH:
-- Brand name (e.g., "Nebzmart-G")
-- Generic drug name (e.g., "Glycopyrronium")
-- Numbers (e.g., "5", "12", "15%")
+CURRENT PRODUCT: ${brandName}
 
-TRANSLATE THESE COMMON PHRASES:
-- "5 minutes" → "5 நிமிடங்கள்"
-- "12 hours" → "12 மணி நேரம்"
-- "Fast acting" → "வேகமாக செயல்படும்"
-- "Long lasting relief" → "நீண்ட நேர நிவாரணம்"
+📝 MANDATORY TRANSLATIONS - USE THESE EXACT TAMIL WORDS:
 
-🚨 THIS IS NON-NEGOTIABLE - ALL VISIBLE TEXT MUST BE IN TAMIL SCRIPT 🚨
+| English | Tamil (USE THIS) |
+|---------|------------------|
+| Fast Relief | விரைவான நிவாரணம் |
+| Quick Action | விரைவான செயல் |
+| Long Lasting | நீண்ட நேரம் |
+| Breathe Easy | எளிதாக சுவாசிக்கவும் |
+| Protection | பாதுகாப்பு |
+| Control | கட்டுப்பாடு |
+| Minutes | நிமிடங்கள் |
+| Hours | மணி நேரம் |
+| Relief | நிவாரணம் |
+| Improvement | முன்னேற்றம் |
+| Effective | பயனுள்ள |
+| Treatment | சிகிச்சை |
+| Patient | நோயாளி |
+| Doctor | மருத்துவர் |
+| 5 minutes | 5 நிமிடங்கள் |
+| 12 hours | 12 மணி நேரம் |
+| Fast acting | வேகமாக செயல்படும் |
+| Long lasting relief | நீண்ட நேர நிவாரணம் |
+| Reduces exacerbations | தீவிரத்தை குறைக்கிறது |
+| For the use of Registered Medical Practitioner | பதிவு செய்யப்பட்ட மருத்துவரின் பயன்பாட்டிற்கு மட்டும் |
+| Hospital | மருத்துவமனை |
+| Laboratory | ஆய்வகம் |
+
+✅ KEEP IN ENGLISH (DO NOT TRANSLATE):
+- Product/Brand name: "${brandName}" (keep exactly as is)
+- Generic drug names (chemical names)
+- Numbers and percentages (5, 12, 15%)
+- Company name
+
+❌ FORBIDDEN - DO NOT DO THIS:
+- Writing headlines in English
+- Writing claims in English
+- Writing any descriptive text in English
+- Using Roman/Latin script for Tamil words
+
+🔴 EVERY HEADLINE, EVERY CLAIM, EVERY DESCRIPTION = TAMIL SCRIPT (தமிழ்) 🔴
 `;
   }
 
-  fullPrompt = `
-${languageInstruction}
+  // Build character instruction based on language - THIS OVERRIDES ANY OTHER CHARACTER INSTRUCTIONS
+  const characterInstruction = `
+🚨🚨🚨 CRITICAL CHARACTER/PATIENT OVERRIDE - READ THIS FIRST 🚨🚨🚨
 
-=== MANDATORY PATIENT APPEARANCE REQUIREMENT ===
-Target Market: ${language}
-Required Ethnicity: ${ethnicity}
+⛔⛔⛔ IGNORE ANY OTHER CHARACTER INSTRUCTIONS IN THIS PROMPT ⛔⛔⛔
 
-You MUST generate a NEW patient with these EXACT characteristics:
+The instructions below about "CHARACTER/PATIENT IMAGE" or "analyze the character in source" are OVERRIDDEN.
+
+📍 TARGET MARKET: ${language}
+📍 REQUIRED CHARACTER TYPE: ${ethnicity}
+
+🔴 YOU MUST GENERATE A PATIENT WITH THESE EXACT CHARACTERISTICS:
 ${ethnicityDetails}
 
-⚠️ IMPORTANT: If a reference image is provided, DO NOT copy the person from it.
-Only use the reference for layout/design inspiration. Generate a COMPLETELY NEW person
-matching the ${ethnicity} ethnicity described above.
+⚠️ CRITICAL RULES FOR CHARACTER:
+1. DO NOT copy or match the person from the reference image
+2. DO NOT use the reference image person's ethnicity, skin tone, or appearance
+3. ONLY use reference image for LAYOUT and DESIGN inspiration
+4. The patient MUST match the "${ethnicity}" description above
+5. Generate a COMPLETELY NEW person based on the description above
 
-=== END MANDATORY REQUIREMENT ===
+${language === 'Hindi' ? '👤 CHARACTER MUST BE: North Indian VILLAGE FARMER - brown skin, simple kurta/dhoti, rural poor appearance. ⛔ DO NOT USE THE PERSON FROM PDF!' : ''}
+${language === 'Tamil' ? '👤 CHARACTER MUST BE: South Indian VILLAGE person with darker brown skin, traditional village attire' : ''}
+${language === 'English' ? '👤 CHARACTER MUST BE: Modern URBAN Indian with fair/wheatish skin, professional city attire' : ''}
 
-${fullPrompt}`;
+🔴 THIS CHARACTER REQUIREMENT IS NON-NEGOTIABLE AND OVERRIDES ALL OTHER INSTRUCTIONS 🔴
+`;
+
+  // Final reminder at the end - extra strong for Hindi
+  const finalReminder = language === 'Hindi' ? `
+
+=== 🚨 FINAL REMINDER FOR HINDI - MUST FOLLOW 🚨 ===
+⛔ DO NOT USE THE PERSON FROM THE REFERENCE PDF/IMAGE ⛔
+✅ CHARACTER: Generate a NEW North Indian VILLAGE FARMER
+   - Brown/wheatish skin, simple kurta/dhoti/saree
+   - Rural, poor, hardworking village appearance
+   - NOT the person shown in the reference image
+✅ LANGUAGE: ALL TEXT IN HINDI (देवनागरी script)
+✅ The person in the PDF is just for LAYOUT reference - DO NOT copy their face/appearance
+=== END REMINDER ===
+` : `
+
+=== FINAL REMINDER - MUST FOLLOW ===
+✅ CHARACTER: ${ethnicity} (${language === 'Tamil' ? 'Village South Indian' : 'Urban City Indian'})
+✅ LANGUAGE: ${language === 'Tamil' ? 'TAMIL (தமிழ் script)' : 'ENGLISH'}
+✅ DO NOT copy person from reference image - generate NEW person matching above description
+=== END REMINDER ===
+`;
+
+  fullPrompt = `
+${characterInstruction}
+
+${languageInstruction}
+
+${fullPrompt}
+
+${finalReminder}`;
 
   // Build content parts
   const contents: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [

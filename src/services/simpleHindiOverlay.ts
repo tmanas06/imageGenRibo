@@ -86,7 +86,7 @@ function sampleBackgroundColor(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  width: number,
+  _width: number,
   height: number
 ): string {
   // Sample from left edge (outside the text area)

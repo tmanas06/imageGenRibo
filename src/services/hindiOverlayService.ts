@@ -66,25 +66,8 @@ function sampleColorFromImage(
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-/**
- * Sample gradient colors for smoother blending
- */
-function sampleGradientColors(
-  ctx: CanvasRenderingContext2D,
-  area: { x: number; y: number; width: number; height: number },
-  imgWidth: number,
-  imgHeight: number
-): { top: string; bottom: string } {
-  const actualX = (area.x / 100) * imgWidth;
-  const actualY = (area.y / 100) * imgHeight;
-  const actualHeight = (area.height / 100) * imgHeight;
-  
-  // Sample from edges (outside the text area)
-  const topColor = sampleColorFromImage(ctx, actualX - 10, actualY, 10);
-  const bottomColor = sampleColorFromImage(ctx, actualX - 10, actualY + actualHeight, 10);
-  
-  return { top: topColor, bottom: bottomColor };
-}
+// TODO: sampleGradientColors reserved for future gradient background support
+// function sampleGradientColors(...) { ... }
 
 /**
  * Draw text with word wrapping
@@ -175,7 +158,6 @@ export async function applyHindiOverlay(
         const actualX = (region.x / 100) * img.width;
         const actualY = (region.y / 100) * img.height;
         const actualWidth = (region.width / 100) * img.width;
-        const actualHeight = (region.height / 100) * img.height;
         
         // Scale font size
         const scaleFactor = Math.min(img.width / 1920, img.height / 1080);

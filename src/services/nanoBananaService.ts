@@ -14,7 +14,8 @@ export interface GenerateImageOptions {
   brand: string;
   theme: string;
   language: string;
-  referenceImages?: string[]; // base64 encoded images
+  referenceImages?: string[]; // base64 encoded images (legacy)
+  labeledContent?: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }>; // New: pre-built labeled content from buildApiContent
   aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9'; // Output aspect ratio
 }
 
@@ -212,7 +213,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     throw new Error('API key not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
   }
 
-  const { prompt, company, brand, theme, language, referenceImages, aspectRatio = '3:4' } = options;
+  const { prompt, company, brand, theme, language, referenceImages, labeledContent, aspectRatio = '3:4' } = options;
 
   // Build the full prompt with theme, brand, and language instructions
   let fullPrompt = prompt;
@@ -298,12 +299,20 @@ ${fullPrompt}
 ${finalReminder}`;
 
   // Build content parts
-  const contents: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-    { text: fullPrompt }
-  ];
+  let contents: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }>;
 
-  // Add reference images if provided
-  if (referenceImages && referenceImages.length > 0) {
+  if (labeledContent && labeledContent.length > 0) {
+    // Use pre-built labeled content (new approach with proper logo/reference separation)
+    // Replace the first text element (prompt) with our enhanced prompt
+    contents = [{ text: fullPrompt }];
+    // Add the rest of the labeled content (logo images and design references with labels)
+    for (let i = 1; i < labeledContent.length; i++) {
+      contents.push(labeledContent[i]);
+    }
+  } else if (referenceImages && referenceImages.length > 0) {
+    // Legacy approach - add reference images without labels
+    contents = [{ text: fullPrompt }];
+    contents.push({ text: '[DESIGN_REFERENCES] - Use these for color palette and style:' });
     for (const img of referenceImages) {
       contents.push({
         inlineData: {
@@ -312,6 +321,9 @@ ${finalReminder}`;
         }
       });
     }
+  } else {
+    // No images provided
+    contents = [{ text: fullPrompt }];
   }
 
   try {

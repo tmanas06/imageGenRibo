@@ -62,155 +62,181 @@ function buildMainPagePrompt(components: ComponentData[], language: string): str
   const disclaimer = getContent('REG_05') || 'For the use of a Registered Medical Practitioner, Hospital, or Laboratory only';
   const companyName = getContent('COMM_03') || 'Glenmark';
 
-  // Build the prompt
-  const prompt = `You are a Pharmaceutical Marketing Director and Senior Visual Designer.
+  // Build the prompt using structured framework
+  const prompt = `
+<role>
+You are a Senior Pharmaceutical Visual Designer with 15 years of experience creating regulatory-compliant Leave Behind Leaflets (LBLs) for top Indian pharmaceutical companies. You specialize in print-ready marketing materials that pass medical-legal review.
+</role>
 
-TASK: Generate a print-ready pharmaceutical Leave Behind Leaflet (LBL).
+<context>
+WHY: Create a professional LBL for medical representatives to leave with doctors after detailing visits.
+AUDIENCE: Healthcare professionals (doctors, specialists)
+USAGE: Print material (2560x1440px, landscape, 16:9)
+BRAND: ${brandName} by ${companyName}
+LANGUAGE: English only (regional translations handled separately)
+</context>
 
-OUTPUT: 2560x1440 pixels, LANDSCAPE orientation (16:9), print-ready quality.
+<chain_of_thought>
+Before generating, follow these steps:
+1. IDENTIFY the provided logo images ([COMPANY_LOGO], [BRAND_LOGO])
+2. PLACE logos in correct positions (company=top-left, brand=top-right)
+3. COPY exact text strings from the content section below
+4. GENERATE a new character matching the description
+5. APPLY colors and style from design reference images
+6. VERIFY spelling against the banned words list
+7. CHECK that each logo appears exactly once
+</chain_of_thought>
 
-LANGUAGE: ALL text in ENGLISH only. No Hindi, Tamil, or non-Latin scripts.
+<assets>
+<logos>
+[COMPANY_LOGO] → Insert at TOP-LEFT corner (do not recreate)
+[BRAND_LOGO] → Insert at TOP-RIGHT corner (do not recreate)
+</logos>
 
+<design_references>
+[DESIGN_REFERENCE] images → Use for colors, typography, icons, visual style
+</design_references>
+</assets>
 
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 1: LOGOS - INSERT ONCE ONLY
-═══════════════════════════════════════════════════════════════════════════════
-
-[COMPANY_LOGO] and [BRAND_LOGO] images are provided.
-
-INSERT each logo ONCE in the output:
-- Company logo: TOP-LEFT corner ONLY
-- Brand logo: TOP-RIGHT corner ONLY
-
-CRITICAL LOGO RULES:
-- Do NOT write "${companyName}" as text - the logo image already contains it
-- Do NOT write "${brandName}" as text if brand logo contains it
-- Do NOT duplicate logos - each appears exactly ONE time
-- Do NOT redraw or recreate logos - use provided images AS-IS
-
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 2: EXACT TEXT TO USE (copy word-for-word)
-═══════════════════════════════════════════════════════════════════════════════
-
-BRAND NAME: ${brandName}${brandVariant ? ` + ${brandVariant}` : ''}
-
-GENERIC NAMES (use EXACTLY as written):
-• "${genericName}"
-${genericNameVariant ? `• "${genericNameVariant}"` : ''}
-
+<content>
+<brand_info>
+BRAND: ${brandName}${brandVariant ? ` + ${brandVariant}` : ''}
+GENERIC: "${genericName}"
+${genericNameVariant ? `GENERIC_2: "${genericNameVariant}"` : ''}
 HEADLINE: "${headline}"
+COMPANY: ${companyName}
+</brand_info>
 
-COMPANY NAME: ${companyName}
+<claims_left_column>
+CLAIM_1: "Quick onset of action within 5 mins"
+CLAIM_2: "12 hrs long lasting relief"
+CLAIM_3: "Improves lung function by 120 ml"
+</claims_left_column>
 
-DISCLAIMER (use EXACTLY):
+<claims_right_column>
+CLAIM_4: "Prevention of exacerbation"
+CLAIM_5: "Reduces Hyper secretions"
+CLAIM_6: "Improves FEV1"
+</claims_right_column>
+
+<disclaimer>
 "${disclaimer}"
+</disclaimer>
+</content>
 
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 3: CLAIMS - COPY EXACTLY (NO MODIFICATIONS)
-═══════════════════════════════════════════════════════════════════════════════
-
-LEFT COLUMN CLAIMS:
-┌────────────────────────────────────┐
-│ "Quick onset of action"            │
-│ "within 5 mins"                    │
-├────────────────────────────────────┤
-│ "12 hrs long lasting relief"       │
-├────────────────────────────────────┤
-│ "Improves lung function"           │
-│ "by 120 ml"                        │
-└────────────────────────────────────┘
-
-RIGHT COLUMN CLAIMS:
-┌────────────────────────────────────┐
-│ "Prevention of exacerbation"       │
-├────────────────────────────────────┤
-│ "Reduces Hyper secretions"         │
-├────────────────────────────────────┤
-│ "Improves FEV1"                    │
-└────────────────────────────────────┘
-
-BANNED WORDS (do NOT use these misspellings):
-❌ onest → ✓ onset
-❌ huces → ✓ hrs
-❌ exaerebation → ✓ exacerbation
-❌ secrustions → ✓ secretions
-❌ exaerebations → ✓ exacerbations
-❌ Practitoner → ✓ Practitioner
-❌ Registerd → ✓ Registered
-❌ Hosptial → ✓ Hospital
-❌ Labratory → ✓ Laboratory
-
-BANNED PATTERNS (never use these):
-❌ "by by" → ✓ "by" (single)
-❌ "Reduces of" → ✓ "Reduces"
-❌ "12-%-15%" → ✓ "12%-15%"
-❌ "onset of of" → ✓ "onset of"
-❌ "within within" → ✓ "within"
-
-DO NOT generate or guess text. COPY the exact strings shown above.
-
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 4: CHARACTER - GENERATE NEW
-═══════════════════════════════════════════════════════════════════════════════
-
+<character>
 ${getCharacterPrompt(language)}
+IMPORTANT: Generate a NEW person. Do NOT copy from reference images.
+</character>
 
-Generate a COMPLETELY NEW person. Do NOT copy from references.
+<layout>
+┌─────────────────────────────────────────────────────────────────┐
+│ [COMPANY_LOGO]                              [BRAND_LOGO]        │
+│ (top-left)                                  (top-right)         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────┐    ┌────────────────────────────────────────┐    │
+│  │          │    │  BRAND NAME                            │    │
+│  │ CHARACTER│    │  Generic name                          │    │
+│  │  (30%)   │    │                                        │    │
+│  │          │    │  CLAIMS (left)      CLAIMS (right)     │    │
+│  │          │    │  • Claim 1          • Claim 4          │    │
+│  │          │    │  • Claim 2          • Claim 5          │    │
+│  │          │    │  • Claim 3          • Claim 6          │    │
+│  └──────────┘    └────────────────────────────────────────┘    │
+│                                    (70%)                        │
+├─────────────────────────────────────────────────────────────────┤
+│                    DISCLAIMER BAR (full width)                  │
+└─────────────────────────────────────────────────────────────────┘
+</layout>
 
+<rules>
+<constraints>
+- Each logo appears exactly ONCE
+- All text copied verbatim from <content> section
+- No text generation or guessing
+- English only (no Hindi/Tamil/Devanagari)
+- No overlapping elements
+</constraints>
 
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 5: LAYOUT
-═══════════════════════════════════════════════════════════════════════════════
+<freedom>
+- Character pose and expression (within description)
+- Icon styles (match reference aesthetic)
+- Color gradients (from reference palette)
+- Typography weight variations
+</freedom>
+</rules>
 
-LOGO POSITIONS (each logo appears ONLY ONCE):
-- Company logo: TOP-LEFT corner
-- Brand logo: TOP-RIGHT corner
+<few_shot_examples>
+<good_example>
+INPUT: CLAIM_1 = "Quick onset of action within 5 mins"
+OUTPUT: Text reads "Quick onset of action within 5 mins" ✓
+REASON: Exact copy, correct spelling
+</good_example>
 
-CONTENT LAYOUT:
-- Character: LEFT side (30% of width)
-- Brand name + Generic name + Claims: CENTER-RIGHT (70% of width)
-- Disclaimer: BOTTOM full-width bar
+<bad_example>
+INPUT: CLAIM_1 = "Quick onset of action within 5 mins"
+OUTPUT: Text reads "Quick onest of action within 5 mins" ✗
+REASON: Misspelled "onset" as "onest"
+</bad_example>
 
-SPACING: No overlapping. Clear separation between elements.
+<good_example>
+INPUT: [COMPANY_LOGO] provided
+OUTPUT: Logo inserted at top-left, appears once ✓
+REASON: Used provided image, correct position, no duplication
+</good_example>
 
+<bad_example>
+INPUT: [COMPANY_LOGO] provided
+OUTPUT: Logo recreated with text "Glenmark" + "COMPANY" badge ✗
+REASON: Should use provided image, not generate new logo or add badges
+</bad_example>
 
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 6: DESIGN REFERENCES
-═══════════════════════════════════════════════════════════════════════════════
+<good_example>
+INPUT: CLAIM_2 = "12 hrs long lasting relief"
+OUTPUT: Text reads "12 hrs long lasting relief" ✓
+REASON: Exact copy, no mixing with other claims
+</good_example>
 
-Use [DESIGN_REFERENCE] images for:
-- Color palette (extract exact colors)
-- Typography style (font weights and hierarchy)
-- Icon styles
-- Visual theme
+<bad_example>
+INPUT: CLAIM_2 = "12 hrs long lasting relief"
+OUTPUT: Text reads "12 hrs long lasting relief 5 mins" ✗
+REASON: Mixed content from CLAIM_1 into CLAIM_2
+</bad_example>
+</few_shot_examples>
 
+<spelling_check>
+BANNED (wrong) → CORRECT:
+- onest → onset
+- exaerebation → exacerbation
+- exaberbation → exacerbation
+- secrustions → secretions
+- Practitoner → Practitioner
+- Registerd → Registered
+- Hosptial → Hospital
+- Labratory → Laboratory
+</spelling_check>
 
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 7: FORBIDDEN
-═══════════════════════════════════════════════════════════════════════════════
+<self_correction>
+Before finalizing, verify:
+□ Company logo appears exactly 1 time at top-left?
+□ Brand logo appears exactly 1 time at top-right?
+□ No "COMPANY" badge or extra labels added to logos?
+□ All claims spelled correctly (check against <spelling_check>)?
+□ Each claim is separate (no mixing of content)?
+□ Disclaimer text is complete and legible?
+□ Character is NEW (not copied from references)?
+□ All text is in English only?
+</self_correction>
 
-LOGO RULES:
-❌ Do NOT show company logo more than ONCE
-❌ Do NOT show brand logo more than ONCE
-❌ Do NOT write "${companyName}" as text (logo has it)
-❌ Do NOT redraw or recreate any logo
-
-TEXT RULES:
-❌ Do NOT generate text - COPY exact strings only
-❌ Do NOT misspell - use BANNED WORDS list above
-❌ Do NOT use BANNED PATTERNS listed above
-❌ Do NOT guess or make up any text
-
-OTHER RULES:
-❌ Do NOT generate Hindi/Tamil text
-❌ Do NOT create overlapping elements
-❌ Do NOT blur any text or logos
-
-
-OUTPUT: Final LBL image only. No explanations.`;
+<output_format>
+FORMAT: Single image
+RESOLUTION: 2560x1440 pixels
+ORIENTATION: Landscape (16:9)
+QUALITY: Print-ready, sharp, no blur
+RESPONSE: Image only, no text explanation
+</output_format>
+`;
 
   return prompt;
 }

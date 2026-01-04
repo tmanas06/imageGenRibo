@@ -52,89 +52,104 @@ function buildMainPagePrompt(components: ComponentData[], language: string): str
     return comp?.content || null;
   };
 
-  // Helper to check if component has image
-  const hasImage = (id: ComponentId): boolean => {
-    const comp = components.find(c => c.component_id === id);
-    return !!(comp?.image_path || comp?.image_base64);
-  };
-
-  // Extract key data from components
-  const brandName = getContent('INIT_01a') || 'Unknown Brand';
+  // Extract data - these should come from database with CORRECT spelling
+  const brandName = getContent('INIT_01a') || 'nebZmart';
   const brandVariant = getContent('INIT_01b') || '';
-  const headline = getContent('INIT_03') || '';
-  const tagline = getContent('INIT_06') || '';
-  const indication = getContent('INS_04') || '';
-  const genericName = getContent('SOL_02') || '';
-  const claims = getContent('SOL_01') || '';
-  const efficacyClaims = getContent('EVID_01') || '';
-  const dosage = getContent('SAFE_01') || '';
+  const headline = getContent('INIT_03') || 'In Moderate to Severe COPD';
+  const genericName = getContent('SOL_02') || 'Glycopyrronium Inhalation Solution 25 mcg';
+  // SOL_03 can be used for secondary generic name if available
+  const genericNameVariant = getContent('SOL_03') || '';
   const disclaimer = getContent('REG_05') || 'For the use of a Registered Medical Practitioner, Hospital, or Laboratory only';
-  const companyName = getContent('COMM_03') || '';
-
-  // Check which logo images are available
-  const hasCompanyLogo = hasImage('COMM_04');
-  const hasBrandLogo = hasImage('INIT_02');
+  const companyName = getContent('COMM_03') || 'Glenmark';
 
   // Build the prompt
-  const prompt = `You are a Pharmaceutical Marketing Director, Medical Affairs Lead, Regulatory Compliance Officer, and Senior Visual Designer.
+  const prompt = `You are a Pharmaceutical Marketing Director and Senior Visual Designer.
 
 TASK: Generate a print-ready pharmaceutical Leave Behind Leaflet (LBL).
 
 OUTPUT: 2560x1440 pixels, LANDSCAPE orientation (16:9), print-ready quality.
 
-LANGUAGE: Generate ALL text in ENGLISH only. No Hindi, Tamil, or non-Latin scripts.
+LANGUAGE: ALL text in ENGLISH only. No Hindi, Tamil, or non-Latin scripts.
 
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION 1: LOGO IMAGES - INSERT EXACTLY AS PROVIDED
+SECTION 1: LOGOS - INSERT ONCE ONLY
 ═══════════════════════════════════════════════════════════════════════════════
 
-You are provided with specific logo images labeled below. These are NOT references to copy from - these ARE the actual logos. INSERT them exactly as provided.
+[COMPANY_LOGO] and [BRAND_LOGO] images are provided.
 
-${hasCompanyLogo ? `[COMPANY_LOGO] IMAGE PROVIDED:
-- This image IS the company logo
-- INSERT this exact image in the TOP-LEFT corner
-- Do NOT redraw, recreate, or modify
-- Do NOT generate a new logo - USE THIS IMAGE` : ''}
+INSERT each logo ONCE in the output:
+- Company logo: TOP-LEFT corner ONLY
+- Brand logo: TOP-RIGHT corner ONLY
 
-${hasBrandLogo ? `[BRAND_LOGO] IMAGE PROVIDED:
-- This image IS the brand/product logo
-- INSERT this exact image in the TOP-RIGHT corner
-- Do NOT redraw, recreate, or modify
-- Do NOT generate a new logo - USE THIS IMAGE` : ''}
-
-CRITICAL LOGO RULE:
-The logo images provided are FINAL ASSETS, not references.
-You must INSERT them into the output, not recreate them.
-If you generate your own version of any logo, the output is INVALID.
+CRITICAL LOGO RULES:
+- Do NOT write "${companyName}" as text - the logo image already contains it
+- Do NOT write "${brandName}" as text if brand logo contains it
+- Do NOT duplicate logos - each appears exactly ONE time
+- Do NOT redraw or recreate logos - use provided images AS-IS
 
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION 2: BRAND INFORMATION
+SECTION 2: EXACT TEXT TO USE (copy word-for-word)
 ═══════════════════════════════════════════════════════════════════════════════
 
-BRAND NAME: ${brandName}${brandVariant ? ` ${brandVariant}` : ''}
-GENERIC NAME: ${genericName || '[Extract from brand logo image]'}
-${headline ? `HEADLINE: ${headline}` : ''}
-${tagline ? `TAGLINE: ${tagline}` : ''}
-${companyName ? `COMPANY: ${companyName}` : ''}
+BRAND NAME: ${brandName}${brandVariant ? ` + ${brandVariant}` : ''}
+
+GENERIC NAMES (use EXACTLY as written):
+• "${genericName}"
+${genericNameVariant ? `• "${genericNameVariant}"` : ''}
+
+HEADLINE: "${headline}"
+
+COMPANY NAME: ${companyName}
+
+DISCLAIMER (use EXACTLY):
+"${disclaimer}"
 
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION 3: CONTENT
+SECTION 3: CLAIMS - COPY EXACTLY (NO MODIFICATIONS)
 ═══════════════════════════════════════════════════════════════════════════════
 
-INDICATION:
-${indication || '[Use indication from reference images]'}
+LEFT COLUMN CLAIMS:
+┌────────────────────────────────────┐
+│ "Quick onset of action"            │
+│ "within 5 mins"                    │
+├────────────────────────────────────┤
+│ "12 hrs long lasting relief"       │
+├────────────────────────────────────┤
+│ "Improves lung function"           │
+│ "by 120 ml"                        │
+└────────────────────────────────────┘
 
-KEY CLAIMS:
-${claims || efficacyClaims || '[Extract claims from reference images]'}
+RIGHT COLUMN CLAIMS:
+┌────────────────────────────────────┐
+│ "Prevention of exacerbation"       │
+├────────────────────────────────────┤
+│ "Reduces Hyper secretions"         │
+├────────────────────────────────────┤
+│ "Improves FEV1"                    │
+└────────────────────────────────────┘
 
-DOSAGE:
-${dosage || '[Extract from reference images]'}
+BANNED WORDS (do NOT use these misspellings):
+❌ onest → ✓ onset
+❌ huces → ✓ hrs
+❌ exaerebation → ✓ exacerbation
+❌ secrustions → ✓ secretions
+❌ exaerebations → ✓ exacerbations
+❌ Practitoner → ✓ Practitioner
+❌ Registerd → ✓ Registered
+❌ Hosptial → ✓ Hospital
+❌ Labratory → ✓ Laboratory
 
-DISCLAIMER:
-${disclaimer}
+BANNED PATTERNS (never use these):
+❌ "by by" → ✓ "by" (single)
+❌ "Reduces of" → ✓ "Reduces"
+❌ "12-%-15%" → ✓ "12%-15%"
+❌ "onset of of" → ✓ "onset of"
+❌ "within within" → ✓ "within"
+
+DO NOT generate or guess text. COPY the exact strings shown above.
 
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -143,58 +158,56 @@ SECTION 4: CHARACTER - GENERATE NEW
 
 ${getCharacterPrompt(language)}
 
-IMPORTANT: Generate a COMPLETELY NEW person. Do NOT copy any person from reference images.
+Generate a COMPLETELY NEW person. Do NOT copy from references.
 
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION 5: DESIGN REFERENCES
+SECTION 5: LAYOUT
 ═══════════════════════════════════════════════════════════════════════════════
 
-Other component images provided (labeled [DESIGN_REFERENCE]) are for style guidance. Use them for:
-- Color palette (extract exact colors)
-- Typography style (match font weights and hierarchy)
-- Icon styles (match the visual style)
-- Layout structure (follow the arrangement)
-- Visual theme (match the overall aesthetic)
-
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 6: LAYOUT
-═══════════════════════════════════════════════════════════════════════════════
-
-ORIENTATION: LANDSCAPE (wider than tall, 16:9)
-
-POSITIONS:
+LOGO POSITIONS (each logo appears ONLY ONCE):
 - Company logo: TOP-LEFT corner
 - Brand logo: TOP-RIGHT corner
-- Character: LEFT side (30%)
-- Claims/Content: RIGHT side (70%)
-- Disclaimer: BOTTOM full-width
 
-SPACING: No overlapping elements. Clear separation between all components.
+CONTENT LAYOUT:
+- Character: LEFT side (30% of width)
+- Brand name + Generic name + Claims: CENTER-RIGHT (70% of width)
+- Disclaimer: BOTTOM full-width bar
 
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 7: QUALITY
-═══════════════════════════════════════════════════════════════════════════════
-
-- All logos SHARP and IDENTICAL to provided images
-- All text LEGIBLE and correctly spelled
-- Spelling check: Registered, Practitioner, Hospital, Laboratory, Exacerbations
-- No blur, pixelation, or artifacts
-- Print-ready professional quality
+SPACING: No overlapping. Clear separation between elements.
 
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION 8: FORBIDDEN
+SECTION 6: DESIGN REFERENCES
 ═══════════════════════════════════════════════════════════════════════════════
 
-- Do NOT generate new logos - use provided logo images exactly
-- Do NOT modify or recolor provided logos
-- Do NOT generate Hindi/Tamil/non-English text
-- Do NOT copy person from references
-- Do NOT create overlapping elements
-- Do NOT produce garbled or misspelled text
+Use [DESIGN_REFERENCE] images for:
+- Color palette (extract exact colors)
+- Typography style (font weights and hierarchy)
+- Icon styles
+- Visual theme
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 7: FORBIDDEN
+═══════════════════════════════════════════════════════════════════════════════
+
+LOGO RULES:
+❌ Do NOT show company logo more than ONCE
+❌ Do NOT show brand logo more than ONCE
+❌ Do NOT write "${companyName}" as text (logo has it)
+❌ Do NOT redraw or recreate any logo
+
+TEXT RULES:
+❌ Do NOT generate text - COPY exact strings only
+❌ Do NOT misspell - use BANNED WORDS list above
+❌ Do NOT use BANNED PATTERNS listed above
+❌ Do NOT guess or make up any text
+
+OTHER RULES:
+❌ Do NOT generate Hindi/Tamil text
+❌ Do NOT create overlapping elements
+❌ Do NOT blur any text or logos
 
 
 OUTPUT: Final LBL image only. No explanations.`;

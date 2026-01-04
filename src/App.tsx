@@ -9,7 +9,7 @@ import { generateImage, isApiConfigured } from './services/nanoBananaService';
 import { applyNebzmartHindi } from './services/simpleHindiOverlay';
 import { overlayLogos } from './services/logoOverlayService';
 import type { ComponentData, Document } from './services/componentService';
-import { buildPromptFromComponents, buildApiContent, LBL_PAGES, type LBLPageType } from './utils/promptBuilder';
+import { buildPromptFromComponents, buildApiContent } from './utils/promptBuilder';
 
 // Helper to get display name for document
 function getDocumentDisplayName(doc: Document): string {
@@ -25,11 +25,10 @@ function App() {
   const [theme, setTheme] = useState('all');
   const [language, setLanguage] = useState('English');
 
-  // Output state - now supports multiple pages
-  const [generatedPages, setGeneratedPages] = useState<{ type: LBLPageType; image: string; mimeType: string }[]>([]);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  // Output state - single page
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [imageMimeType, setImageMimeType] = useState('image/png');
   const [isLoading, setIsLoading] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState<{ current: number; total: number; pageName: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [overlayStatus, setOverlayStatus] = useState<string | null>(null);
 
@@ -48,11 +47,10 @@ function App() {
     setSelectedDocument(doc);
     setComponents(docComponents);
     setError(null);
-    setGeneratedPages([]);
-    setCurrentPageIndex(0);
+    setGeneratedImage(null);
   }, []);
 
-  // Generate LBL from components - now generates all pages
+  // Generate single LBL page from components
   const handleGenerate = useCallback(async () => {
     if (!selectedDocument || components.length === 0) {
       setError('Please select a document first.');
@@ -66,82 +64,69 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-    setGeneratedPages([]);
-    setCurrentPageIndex(0);
+    setGeneratedImage(null);
     setOverlayStatus(null);
-
-    const pages: { type: LBLPageType; image: string; mimeType: string }[] = [];
 
     try {
       const companyName = (selectedDocument.company_name || 'pharma') as string;
       const brandName = (selectedDocument.brand_name || selectedDocument.name || 'product') as string;
 
-      // Generate each page
-      for (let i = 0; i < LBL_PAGES.length; i++) {
-        const page = LBL_PAGES[i];
-        setGenerationProgress({ current: i + 1, total: LBL_PAGES.length, pageName: page.title });
+      // Build prompt for main page
+      const prompt = buildPromptFromComponents(components, language);
 
-        // Build page-specific prompt
-        const prompt = buildPromptFromComponents(components, language, page.type);
+      // Build labeled content with properly separated logos and design references
+      const labeledContent = buildApiContent(prompt, components);
 
-        // Build labeled content with properly separated logos and design references
-        const labeledContent = buildApiContent(prompt, components);
+      // Generate image
+      const result = await generateImage({
+        prompt,
+        company: companyName.toLowerCase(),
+        brand: brandName.toLowerCase(),
+        theme,
+        language,
+        labeledContent,
+        aspectRatio: '16:9',
+      });
 
-        // Generate image for this page
-        const result = await generateImage({
-          prompt,
-          company: companyName.toLowerCase(),
-          brand: brandName.toLowerCase(),
-          theme,
-          language,
-          labeledContent, // Use new labeled content instead of referenceImages
-          aspectRatio: '16:9',
+      let finalImage = result.imageBase64;
+
+      // Apply logo overlay
+      setOverlayStatus('Overlaying logos...');
+      try {
+        finalImage = await overlayLogos(finalImage, components, {
+          companyLogoPosition: 'top-left',
+          brandLogoPosition: 'top-right',
+          logoMaxWidthPercent: 12,
+          logoMaxHeightPercent: 15,
+          padding: 25,
         });
-
-        let finalImage = result.imageBase64;
-
-        // Apply logo overlay
-        setOverlayStatus(`Page ${i + 1}: Overlaying logos...`);
-        try {
-          finalImage = await overlayLogos(finalImage, components, {
-            companyLogoPosition: 'top-left',
-            brandLogoPosition: 'top-right',
-            logoMaxWidthPercent: 12,
-            logoMaxHeightPercent: 15,
-            padding: 25,
-          });
-        } catch (logoErr) {
-          console.warn('Logo overlay failed for page', i + 1, logoErr);
-        }
-
-        // Apply Hindi overlay if needed (only for main page)
-        if (language === 'Hindi' && page.type === 'main') {
-          setOverlayStatus(`Page ${i + 1}: Applying Hindi overlay...`);
-          try {
-            finalImage = await applyNebzmartHindi(result.imageBase64);
-          } catch (overlayErr) {
-            console.error('Overlay error:', overlayErr);
-          }
-        }
-
-        pages.push({
-          type: page.type,
-          image: finalImage,
-          mimeType: result.mimeType,
-        });
-
-        // Update pages as we go so user can see progress
-        setGeneratedPages([...pages]);
+        setOverlayStatus('Logos applied!');
+      } catch (logoErr) {
+        console.warn('Logo overlay failed:', logoErr);
+        setOverlayStatus('Logo overlay skipped');
       }
 
-      setOverlayStatus(`All ${LBL_PAGES.length} pages generated!`);
-      setGenerationProgress(null);
+      // Apply Hindi overlay if needed
+      if (language === 'Hindi') {
+        setOverlayStatus('Applying Hindi text overlay...');
+        try {
+          finalImage = await applyNebzmartHindi(result.imageBase64);
+          setOverlayStatus('Hindi overlay applied!');
+        } catch (overlayErr) {
+          console.error('Overlay error:', overlayErr);
+          setOverlayStatus('Overlay failed - showing English version');
+        }
+      } else if (language === 'Tamil') {
+        setOverlayStatus('Tamil overlay coming soon - showing English version');
+      }
+
+      setGeneratedImage(finalImage);
+      setImageMimeType(result.mimeType);
     } catch (err) {
       console.error('Error generating image:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate image. Please try again.');
     } finally {
       setIsLoading(false);
-      setGenerationProgress(null);
     }
   }, [selectedDocument, components, theme, language]);
 
@@ -300,54 +285,22 @@ function App() {
               <div className={`px-6 py-4 border-b transition-colors duration-300 ${
                 isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
               }`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                      Generated Output
-                    </h2>
-                    <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {generationProgress
-                        ? `Generating ${generationProgress.pageName} (${generationProgress.current}/${generationProgress.total})...`
-                        : generatedPages.length > 0
-                        ? `${generatedPages.length} pages generated`
-                        : 'Your LBL pages will appear here'}
-                    </p>
-                  </div>
-                  {generatedPages.length > 0 && (
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${
-                      isDarkMode ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-100 text-indigo-700'
-                    }`}>
-                      {LBL_PAGES[currentPageIndex]?.title || 'Page'}
-                    </span>
-                  )}
-                </div>
+                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Generated Output
+                </h2>
+                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {isLoading
+                    ? 'Generating LBL...'
+                    : generatedImage
+                    ? 'Your LBL is ready'
+                    : 'Your LBL design will appear here'}
+                </p>
               </div>
               <div className="p-6">
-                {/* Generation Progress */}
-                {generationProgress && (
-                  <div className={`mb-4 p-4 rounded-lg ${isDarkMode ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="animate-spin w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
-                      <span className={`text-sm font-medium ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                        Generating {generationProgress.pageName}...
-                      </span>
-                    </div>
-                    <div className={`w-full h-2 rounded-full ${isDarkMode ? 'bg-slate-600' : 'bg-slate-200'}`}>
-                      <div
-                        className="h-full bg-indigo-500 rounded-full transition-all duration-300"
-                        style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
-                      />
-                    </div>
-                    <p className={`text-xs mt-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Page {generationProgress.current} of {generationProgress.total}
-                    </p>
-                  </div>
-                )}
-
                 {/* Overlay Status Message */}
-                {overlayStatus && !generationProgress && (
+                {overlayStatus && (
                   <div className={`mb-4 p-3 rounded-lg text-sm ${
-                    overlayStatus.includes('generated') || overlayStatus.includes('applied')
+                    overlayStatus.includes('applied') || overlayStatus.includes('ready')
                       ? isDarkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-50 text-green-700'
                       : isDarkMode ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-700'
                   }`}>
@@ -355,62 +308,10 @@ function App() {
                   </div>
                 )}
 
-                {/* Page Navigation */}
-                {generatedPages.length > 1 && (
-                  <div className={`mb-4 flex items-center justify-center gap-2`}>
-                    <button
-                      onClick={() => setCurrentPageIndex(Math.max(0, currentPageIndex - 1))}
-                      disabled={currentPageIndex === 0}
-                      className={`p-2 rounded-lg transition-colors ${
-                        currentPageIndex === 0
-                          ? isDarkMode ? 'text-slate-600' : 'text-slate-300'
-                          : isDarkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-
-                    <div className="flex gap-1">
-                      {LBL_PAGES.map((page, idx) => (
-                        <button
-                          key={page.type}
-                          onClick={() => setCurrentPageIndex(idx)}
-                          disabled={idx >= generatedPages.length}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                            idx === currentPageIndex
-                              ? isDarkMode ? 'bg-indigo-600 text-white' : 'bg-indigo-500 text-white'
-                              : idx < generatedPages.length
-                              ? isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                              : isDarkMode ? 'bg-slate-800 text-slate-600' : 'bg-slate-50 text-slate-300'
-                          }`}
-                        >
-                          {page.title}
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => setCurrentPageIndex(Math.min(generatedPages.length - 1, currentPageIndex + 1))}
-                      disabled={currentPageIndex >= generatedPages.length - 1}
-                      className={`p-2 rounded-lg transition-colors ${
-                        currentPageIndex >= generatedPages.length - 1
-                          ? isDarkMode ? 'text-slate-600' : 'text-slate-300'
-                          : isDarkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
                 <ImageOutput
-                  imageData={generatedPages[currentPageIndex]?.image || null}
-                  mimeType={generatedPages[currentPageIndex]?.mimeType || 'image/png'}
-                  isLoading={isLoading && generatedPages.length === 0}
+                  imageData={generatedImage}
+                  mimeType={imageMimeType}
+                  isLoading={isLoading}
                   error={error}
                   isDarkMode={isDarkMode}
                 />

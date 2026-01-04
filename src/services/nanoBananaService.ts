@@ -272,6 +272,10 @@ ${finalReminder}`;
       contents: contents,
       config: {
         responseModalities: ['image', 'text'],
+        // Request 16:9 aspect ratio for presentation slide format
+        imageConfig: {
+          aspectRatio: '16:9',
+        },
       }
     });
 
@@ -286,8 +290,6 @@ ${finalReminder}`;
       if ('inlineData' in part && part.inlineData) {
         const imageBase64 = part.inlineData.data as string;
 
-        // Skip aspect ratio fitting - use AI image as-is
-        // Logos will be overlaid directly on the generated content
         return {
           imageBase64,
           mimeType: 'image/png'

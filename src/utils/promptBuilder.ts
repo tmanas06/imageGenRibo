@@ -69,7 +69,8 @@ You are a Senior Pharmaceutical Visual Designer with 15 years of experience crea
 <context>
 WHY: Create a professional LBL for medical representatives to leave with doctors after detailing visits.
 AUDIENCE: Healthcare professionals (doctors, specialists)
-USAGE: Print material (2560x1440px, landscape, 16:9)
+FORMAT: Like a PowerPoint presentation slide or TV screen (16:9 aspect ratio)
+SIZE: 1920x1080 pixels or similar 16:9 proportions (NOT a wide banner, NOT a thin strip)
 BRAND: ${brandName} by ${companyName}
 LANGUAGE: English only (regional translations handled separately)
 </context>
@@ -102,22 +103,33 @@ DO NOT copy any logos from these reference images
 </design_references>
 
 <content>
-⚠️ COPY ALL TEXT BELOW EXACTLY - CHARACTER FOR CHARACTER - NO CHANGES ⚠️
+🔴 CRITICAL: COPY EACH TEXT STRING EXACTLY AS SHOWN - NO MODIFICATIONS 🔴
 
 BRAND_NAME: "${brandName}"
 GENERIC_NAME: "${genericName}"
 HEADLINE: "${headline}"
 
+📋 SIX SEPARATE CLAIMS (display each on its own line with an icon):
+
 CLAIM_1: "Quick onset of action within 5 mins"
+         ↳ Note: "onset" not "onest" or "onsst"
+
 CLAIM_2: "12 hrs long lasting relief"
+         ↳ This is SEPARATE from Claim 1
+
 CLAIM_3: "Improves lung function by 120 ml"
+
 CLAIM_4: "Prevention of exacerbation"
+         ↳ Note: "exacerbation" (a-c-e-r-b-a-t-i-o-n)
+
 CLAIM_5: "Reduces Hyper secretions"
+         ↳ Note: "secretions" (s-e-c-r-e-t-i-o-n-s)
+
 CLAIM_6: "Improves FEV1"
 
 DISCLAIMER: "${disclaimer}"
 
-⚠️ DO NOT REPHRASE, SUMMARIZE, OR MODIFY ANY TEXT ABOVE ⚠️
+🔴 EACH CLAIM = 1 SEPARATE LINE WITH ITS OWN ICON 🔴
 </content>
 
 <character>
@@ -128,30 +140,34 @@ IMPORTANT: Generate a NEW person. Do NOT copy from reference images.
 <layout>
 ┌─────────────────────────────────────────────────────────────────┐
 │ [EMPTY]                                           [EMPTY]       │
-│ (no logo here)                               (no logo here)     │
-├─────────────────────────────────────────────────────────────────┤
+│ (reserved for logo overlay)                (reserved for logo)  │
+├──────────────────────── HEADLINE ───────────────────────────────┤
 │                                                                 │
 │  ┌──────────┐    ┌────────────────────────────────────────┐    │
-│  │          │    │  BRAND_NAME (from content)             │    │
-│  │ CHARACTER│    │  GENERIC_NAME (from content)           │    │
+│  │          │    │  BRAND_NAME                            │    │
+│  │ CHARACTER│    │  GENERIC_NAME                          │    │
 │  │          │    │                                        │    │
-│  │          │    │  • CLAIM_1    • CLAIM_4                │    │
-│  │          │    │  • CLAIM_2    • CLAIM_5                │    │
-│  │          │    │  • CLAIM_3    • CLAIM_6                │    │
+│  │          │    │  LEFT COLUMN:     RIGHT COLUMN:        │    │
+│  │          │    │   CLAIM_1           CLAIM_4           │    │
+│  │          │    │   CLAIM_2           CLAIM_5           │    │
+│  │          │    │   CLAIM_3           CLAIM_6           │    │
 │  └──────────┘    └────────────────────────────────────────┘    │
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
-│                    DISCLAIMER (from content)                    │
+│                         DISCLAIMER                              │
 └─────────────────────────────────────────────────────────────────┘
 
-IMPORTANT: Use EXACT text from <content> section. No column headers needed.
+⚠️ 6 CLAIMS = 6 SEPARATE BULLET POINTS (3 left, 3 right)
+⚠️ Each claim gets its own medical icon
+⚠️ DO NOT merge claims together
 </layout>
 
 <rules>
 <constraints>
 - DO NOT generate any logos - leave blank areas at top-left and top-right
-- All text copied verbatim from <content> section
-- No text generation or guessing
+- All text copied EXACTLY from <content> section - character for character
+- 6 claims = 6 SEPARATE lines (never combine claims on same line)
+- No text generation or guessing - only copy provided text
 - English only (no Hindi/Tamil/Devanagari)
 - No overlapping elements
 - No "COMPANY" or "BRAND" text badges
@@ -230,23 +246,29 @@ WHY: Should be EMPTY - logos added via post-processing
 </spelling_check>
 
 <self_correction>
-Before finalizing, verify:
-□ TOP-LEFT corner is BLANK (no logo, no text, no graphics)?
-□ TOP-RIGHT corner is BLANK (no logo, no text, no graphics)?
-□ No "COMPANY" or "BRAND" badges anywhere?
-□ No attempt to draw/recreate any logos?
-□ All claims spelled correctly (check against <spelling_check>)?
-□ Each claim is separate (no mixing of content)?
-□ Disclaimer text is complete and legible?
-□ Character is NEW (not copied from references)?
-□ All text is in English only?
+Before finalizing, COUNT and VERIFY:
+□ TOP-LEFT corner is BLANK? (no logo - will be added later)
+□ TOP-RIGHT corner is BLANK? (no logo - will be added later)
+□ Exactly 6 claim bullet points visible? (3 left + 3 right)
+□ CLAIM_1 and CLAIM_2 are on SEPARATE lines? (not merged)
+□ "onset" spelled correctly? (not "onest" or "onsst")
+□ "exacerbation" spelled correctly? (not "exaerebation")
+□ "secretions" spelled correctly? (not "secreutions")
+□ Disclaimer bar visible at bottom?
+□ Character is a NEW person (not from references)?
 </self_correction>
 
 <output_format>
-FORMAT: Single image
-RESOLUTION: 2560x1440 pixels (16:9 landscape)
-FILL: Content must fill ENTIRE canvas - NO empty/white space at top, bottom, or sides
-HEADER: Teal/colored header bar should start at TOP EDGE of image (Y=0)
+FORMAT: Single image like a PowerPoint slide or TV screen
+ASPECT_RATIO: 16:9 (sixteen by nine) - like a widescreen TV
+DIMENSIONS: Width=1920, Height=1080 (or proportional like 2560x1440)
+
+⚠️ DO NOT generate a wide banner (4:1 or 3:1 ratio)
+⚠️ DO NOT generate a thin horizontal strip
+⚠️ The image should be roughly as tall as it is wide (16:9 means height is about 56% of width)
+
+EXAMPLE: If width is 1920px, height must be ~1080px (NOT 480px or 512px)
+
 QUALITY: Print-ready, sharp, no blur
 RESPONSE: Image only, no text explanation
 </output_format>

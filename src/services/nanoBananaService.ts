@@ -145,75 +145,14 @@ export interface GenerateImageResult {
 }
 
 /**
- * Fit image to target aspect ratio (no cropping - adds background padding if needed)
- */
-async function fitImageToAspectRatio(
-  imageBase64: string,
-  targetAspectRatio: string
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-
-    img.onload = () => {
-      // Parse target aspect ratio
-      const [targetW, targetH] = targetAspectRatio.split(':').map(Number);
-      const targetRatio = targetW / targetH;
-      const currentRatio = img.width / img.height;
-
-      // Target canvas size (use larger dimension as base)
-      let canvasWidth: number, canvasHeight: number;
-
-      if (currentRatio > targetRatio) {
-        // Image is wider - fit width, add height padding
-        canvasWidth = img.width;
-        canvasHeight = Math.round(img.width / targetRatio);
-      } else {
-        // Image is taller - fit height, add width padding
-        canvasHeight = img.height;
-        canvasWidth = Math.round(img.height * targetRatio);
-      }
-
-      // Create canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'));
-        return;
-      }
-
-      // Fill with white background
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-      // Center the image on canvas
-      const offsetX = Math.round((canvasWidth - img.width) / 2);
-      const offsetY = Math.round((canvasHeight - img.height) / 2);
-
-      // Draw original image centered
-      ctx.drawImage(img, offsetX, offsetY);
-
-      // Return as base64
-      const resultBase64 = canvas.toDataURL('image/png').split(',')[1];
-      resolve(resultBase64);
-    };
-
-    img.onerror = () => reject(new Error('Failed to load image for resizing'));
-    img.src = `data:image/png;base64,${imageBase64}`;
-  });
-}
-
-/**
- * Generate an image using Nano Banana Pro (Gemini 3 Pro Image)
+ * Generate an image using Gemini Image Generation
  */
 export async function generateImage(options: GenerateImageOptions): Promise<GenerateImageResult> {
   if (!ai) {
     throw new Error('API key not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
   }
 
-  const { prompt, company, brand, theme, language, referenceImages, labeledContent, aspectRatio = '3:4' } = options;
+  const { prompt, company, brand, theme, language, referenceImages, labeledContent } = options;
 
   // Build the full prompt with theme, brand, and language instructions
   let fullPrompt = prompt;
@@ -345,15 +284,10 @@ ${finalReminder}`;
     // Find the image part in the response
     for (const part of candidate.content.parts) {
       if ('inlineData' in part && part.inlineData) {
-        let imageBase64 = part.inlineData.data as string;
+        const imageBase64 = part.inlineData.data as string;
 
-        // Fit to target aspect ratio (no cropping - adds padding)
-        try {
-          imageBase64 = await fitImageToAspectRatio(imageBase64, aspectRatio);
-        } catch (resizeErr) {
-          console.warn('Failed to fit image, using original:', resizeErr);
-        }
-
+        // Skip aspect ratio fitting - use AI image as-is
+        // Logos will be overlaid directly on the generated content
         return {
           imageBase64,
           mimeType: 'image/png'

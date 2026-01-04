@@ -17,9 +17,10 @@ export const LBL_PAGES: LBLPageConfig[] = [
 ];
 
 // Logo component IDs - these are treated as assets to INSERT, not references
+// COMM_04 = Company Logo, INIT_01a = Brand Root Name (nebZmart logo)
 const LOGO_COMPONENT_IDS: { id: ComponentId; label: string; position: string }[] = [
   { id: 'COMM_04', label: 'COMPANY_LOGO', position: 'TOP-LEFT' },
-  { id: 'INIT_02', label: 'BRAND_LOGO', position: 'TOP-RIGHT' },
+  { id: 'INIT_01a', label: 'BRAND_LOGO', position: 'TOP-RIGHT' },
 ];
 
 /**
@@ -54,11 +55,8 @@ function buildMainPagePrompt(components: ComponentData[], language: string): str
 
   // Extract data - these should come from database with CORRECT spelling
   const brandName = getContent('INIT_01a') || 'nebZmart';
-  const brandVariant = getContent('INIT_01b') || '';
   const headline = getContent('INIT_03') || 'In Moderate to Severe COPD';
   const genericName = getContent('SOL_02') || 'Glycopyrronium Inhalation Solution 25 mcg';
-  // SOL_03 can be used for secondary generic name if available
-  const genericNameVariant = getContent('SOL_03') || '';
   const disclaimer = getContent('REG_05') || 'For the use of a Registered Medical Practitioner, Hospital, or Laboratory only';
   const companyName = getContent('COMM_03') || 'Glenmark';
 
@@ -77,51 +75,49 @@ LANGUAGE: English only (regional translations handled separately)
 </context>
 
 <chain_of_thought>
-Before generating, follow these steps:
-1. IDENTIFY the provided logo images ([COMPANY_LOGO], [BRAND_LOGO])
-2. PLACE logos in correct positions (company=top-left, brand=top-right)
-3. COPY exact text strings from the content section below
+STEP-BY-STEP PROCESS:
+1. READ the <content> section carefully
+2. COPY each text string CHARACTER-FOR-CHARACTER (do not paraphrase)
+3. LEAVE TOP-LEFT and TOP-RIGHT corners completely EMPTY (no logos, no company names)
 4. GENERATE a new character matching the description
-5. APPLY colors and style from design reference images
-6. VERIFY spelling against the banned words list
-7. CHECK that each logo appears exactly once
+5. USE reference images for colors/style only (ignore any logos in them)
+6. DOUBLE-CHECK spelling matches exactly what's in <content>
+7. VERIFY: No "Glenmark", no logos, no company graphics ANYWHERE
 </chain_of_thought>
 
-<assets>
-<logos>
-[COMPANY_LOGO] → Insert at TOP-LEFT corner (do not recreate)
-[BRAND_LOGO] → Insert at TOP-RIGHT corner (do not recreate)
-</logos>
+<logo_placement>
+IMPORTANT: DO NOT generate any logos. Leave these areas EMPTY/BLANK:
+- TOP-LEFT corner: Reserved for company logo (will be added via post-processing)
+- TOP-RIGHT corner: Reserved for brand logo (will be added via post-processing)
+
+The logo areas should be:
+- Clean background matching the header color
+- NO text, NO graphics, NO placeholder boxes
+- Just empty space where logos will be overlaid later
+</logo_placement>
 
 <design_references>
 [DESIGN_REFERENCE] images → Use for colors, typography, icons, visual style
+DO NOT copy any logos from these reference images
 </design_references>
-</assets>
 
 <content>
-<brand_info>
-BRAND: ${brandName}${brandVariant ? ` + ${brandVariant}` : ''}
-GENERIC: "${genericName}"
-${genericNameVariant ? `GENERIC_2: "${genericNameVariant}"` : ''}
-HEADLINE: "${headline}"
-COMPANY: ${companyName}
-</brand_info>
+⚠️ COPY ALL TEXT BELOW EXACTLY - CHARACTER FOR CHARACTER - NO CHANGES ⚠️
 
-<claims_left_column>
+BRAND_NAME: "${brandName}"
+GENERIC_NAME: "${genericName}"
+HEADLINE: "${headline}"
+
 CLAIM_1: "Quick onset of action within 5 mins"
 CLAIM_2: "12 hrs long lasting relief"
 CLAIM_3: "Improves lung function by 120 ml"
-</claims_left_column>
-
-<claims_right_column>
 CLAIM_4: "Prevention of exacerbation"
 CLAIM_5: "Reduces Hyper secretions"
 CLAIM_6: "Improves FEV1"
-</claims_right_column>
 
-<disclaimer>
-"${disclaimer}"
-</disclaimer>
+DISCLAIMER: "${disclaimer}"
+
+⚠️ DO NOT REPHRASE, SUMMARIZE, OR MODIFY ANY TEXT ABOVE ⚠️
 </content>
 
 <character>
@@ -131,32 +127,34 @@ IMPORTANT: Generate a NEW person. Do NOT copy from reference images.
 
 <layout>
 ┌─────────────────────────────────────────────────────────────────┐
-│ [COMPANY_LOGO]                              [BRAND_LOGO]        │
-│ (top-left)                                  (top-right)         │
+│ [EMPTY]                                           [EMPTY]       │
+│ (no logo here)                               (no logo here)     │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────┐    ┌────────────────────────────────────────┐    │
-│  │          │    │  BRAND NAME                            │    │
-│  │ CHARACTER│    │  Generic name                          │    │
-│  │  (30%)   │    │                                        │    │
-│  │          │    │  CLAIMS (left)      CLAIMS (right)     │    │
-│  │          │    │  • Claim 1          • Claim 4          │    │
-│  │          │    │  • Claim 2          • Claim 5          │    │
-│  │          │    │  • Claim 3          • Claim 6          │    │
+│  │          │    │  BRAND_NAME (from content)             │    │
+│  │ CHARACTER│    │  GENERIC_NAME (from content)           │    │
+│  │          │    │                                        │    │
+│  │          │    │  • CLAIM_1    • CLAIM_4                │    │
+│  │          │    │  • CLAIM_2    • CLAIM_5                │    │
+│  │          │    │  • CLAIM_3    • CLAIM_6                │    │
 │  └──────────┘    └────────────────────────────────────────┘    │
-│                                    (70%)                        │
+│                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
-│                    DISCLAIMER BAR (full width)                  │
+│                    DISCLAIMER (from content)                    │
 └─────────────────────────────────────────────────────────────────┘
+
+IMPORTANT: Use EXACT text from <content> section. No column headers needed.
 </layout>
 
 <rules>
 <constraints>
-- Each logo appears exactly ONCE
+- DO NOT generate any logos - leave blank areas at top-left and top-right
 - All text copied verbatim from <content> section
 - No text generation or guessing
 - English only (no Hindi/Tamil/Devanagari)
 - No overlapping elements
+- No "COMPANY" or "BRAND" text badges
 </constraints>
 
 <freedom>
@@ -164,64 +162,79 @@ IMPORTANT: Generate a NEW person. Do NOT copy from reference images.
 - Icon styles (match reference aesthetic)
 - Color gradients (from reference palette)
 - Typography weight variations
+- Header bar color (clean, professional)
 </freedom>
 </rules>
 
 <few_shot_examples>
-<good_example>
+<text_copying_examples>
+<good>
 INPUT: CLAIM_1 = "Quick onset of action within 5 mins"
-OUTPUT: Text reads "Quick onset of action within 5 mins" ✓
-REASON: Exact copy, correct spelling
-</good_example>
+OUTPUT: "Quick onset of action within 5 mins" ✓
+WHY: Character-for-character exact copy
+</good>
 
-<bad_example>
+<bad>
 INPUT: CLAIM_1 = "Quick onset of action within 5 mins"
-OUTPUT: Text reads "Quick onest of action within 5 mins" ✗
-REASON: Misspelled "onset" as "onest"
-</bad_example>
+OUTPUT: "Quick onsst of action within 5 mins" ✗
+WHY: Misspelled - should COPY, not type from memory
+</bad>
 
-<good_example>
-INPUT: [COMPANY_LOGO] provided
-OUTPUT: Logo inserted at top-left, appears once ✓
-REASON: Used provided image, correct position, no duplication
-</good_example>
+<bad>
+INPUT: CLAIM_4 = "Prevention of exacerbation"
+OUTPUT: "Prevention of exrarebbation" ✗
+WHY: Misspelled - COPY the exact text provided
+</bad>
 
-<bad_example>
-INPUT: [COMPANY_LOGO] provided
-OUTPUT: Logo recreated with text "Glenmark" + "COMPANY" badge ✗
-REASON: Should use provided image, not generate new logo or add badges
-</bad_example>
+<good>
+INPUT: DISCLAIMER = "For the use of a Registered Medical Practitioner, Hospital, or Laboratory only"
+OUTPUT: "For the use of a Registered Medical Practitioner, Hospital, or Laboratory only" ✓
+WHY: Exact copy of disclaimer text
+</good>
 
-<good_example>
-INPUT: CLAIM_2 = "12 hrs long lasting relief"
-OUTPUT: Text reads "12 hrs long lasting relief" ✓
-REASON: Exact copy, no mixing with other claims
-</good_example>
+<bad>
+INPUT: DISCLAIMER text provided
+OUTPUT: "For the use of a Registered Medical Practitinor, Hosptial, or Laboraatory only" ✗
+WHY: Multiple misspellings - should have copied EXACTLY
+</bad>
+</text_copying_examples>
 
-<bad_example>
-INPUT: CLAIM_2 = "12 hrs long lasting relief"
-OUTPUT: Text reads "12 hrs long lasting relief 5 mins" ✗
-REASON: Mixed content from CLAIM_1 into CLAIM_2
-</bad_example>
+<logo_examples>
+<good>
+INPUT: Leave top-left corner empty
+OUTPUT: Clean teal/colored header bar with no graphics at corners ✓
+WHY: Proper empty space for logo overlay
+</good>
+
+<bad>
+INPUT: Leave top-left corner empty
+OUTPUT: Generated "Glenmark" logo or company name ✗
+WHY: Should be EMPTY - logos added via post-processing
+</bad>
+</logo_examples>
 </few_shot_examples>
 
 <spelling_check>
-BANNED (wrong) → CORRECT:
-- onest → onset
-- exaerebation → exacerbation
-- exaberbation → exacerbation
-- secrustions → secretions
-- Practitoner → Practitioner
-- Registerd → Registered
-- Hosptial → Hospital
-- Labratory → Laboratory
+🚫 BANNED MISSPELLINGS - If you write any of these, START OVER:
+- onsst, onest → CORRECT: onset
+- exrarebbation, exaerebation, exaberbation → CORRECT: exacerbation
+- secruitions, secrustions → CORRECT: secretions
+- Practitinor, Practitoner → CORRECT: Practitioner
+- Laboraatory, Labratory → CORRECT: Laboratory
+- Registerd → CORRECT: Registered
+- Hosptial → CORRECT: Hospital
+- rexepecation → NOT A WORD (don't use)
+- Rect bation → NOT A WORD (don't use)
+
+✅ SOLUTION: Copy text EXACTLY from <content> section - don't generate new text!
 </spelling_check>
 
 <self_correction>
 Before finalizing, verify:
-□ Company logo appears exactly 1 time at top-left?
-□ Brand logo appears exactly 1 time at top-right?
-□ No "COMPANY" badge or extra labels added to logos?
+□ TOP-LEFT corner is BLANK (no logo, no text, no graphics)?
+□ TOP-RIGHT corner is BLANK (no logo, no text, no graphics)?
+□ No "COMPANY" or "BRAND" badges anywhere?
+□ No attempt to draw/recreate any logos?
 □ All claims spelled correctly (check against <spelling_check>)?
 □ Each claim is separate (no mixing of content)?
 □ Disclaimer text is complete and legible?
@@ -231,8 +244,9 @@ Before finalizing, verify:
 
 <output_format>
 FORMAT: Single image
-RESOLUTION: 2560x1440 pixels
-ORIENTATION: Landscape (16:9)
+RESOLUTION: 2560x1440 pixels (16:9 landscape)
+FILL: Content must fill ENTIRE canvas - NO empty/white space at top, bottom, or sides
+HEADER: Teal/colored header bar should start at TOP EDGE of image (Y=0)
 QUALITY: Print-ready, sharp, no blur
 RESPONSE: Image only, no text explanation
 </output_format>
@@ -469,6 +483,7 @@ export function getDesignReferenceImages(components: ComponentData[]): {
 
 /**
  * Build content array for API call with properly labeled images
+ * NOTE: Logo images are NOT sent to AI - they are overlaid in post-processing
  */
 export function buildApiContent(
   prompt: string,
@@ -480,25 +495,15 @@ export function buildApiContent(
   // Add main prompt
   content.push({ text: prompt });
 
-  // Add LOGO images with labels (these must be inserted exactly)
-  const logos = getLogoImages(components);
-  for (const logo of logos) {
-    content.push({
-      text: `[${logo.label}] - INSERT this exact image at ${logo.position}:`
-    });
-    content.push({
-      inlineData: {
-        mimeType: 'image/png',
-        data: logo.base64
-      }
-    });
-  }
+  // NOTE: We do NOT send logo images to the AI anymore
+  // Logos will be overlaid via post-processing (logoOverlayService.ts)
+  // This prevents the AI from trying to recreate/interpret logos
 
-  // Add design reference images
+  // Add design reference images (excluding logos)
   const references = getDesignReferenceImages(components);
   if (references.length > 0) {
     content.push({
-      text: `[DESIGN_REFERENCES] - Use these for color palette, typography, and style (do NOT copy logos from these):`
+      text: `[DESIGN_REFERENCES] - Use these for color palette, typography, icons, and visual style. DO NOT copy any logos from these images:`
     });
     for (const ref of references) {
       content.push({

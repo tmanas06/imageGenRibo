@@ -80,8 +80,8 @@ export function extractLogos(components: ComponentData[]): {
 } {
   // COMM_04 is Company Logo
   const companyLogoComp = components.find(c => c.component_id === 'COMM_04');
-  // INIT_02 is Brand Logo
-  const brandLogoComp = components.find(c => c.component_id === 'INIT_02');
+  // INIT_01a is Brand Root Name (nebZmart logo)
+  const brandLogoComp = components.find(c => c.component_id === 'INIT_01a');
 
   return {
     companyLogo: companyLogoComp?.image_base64 || null,

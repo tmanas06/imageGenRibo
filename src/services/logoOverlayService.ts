@@ -101,6 +101,7 @@ export async function overlayLogos(
     logoMaxWidthPercent?: number;
     logoMaxHeightPercent?: number;
     padding?: number;
+    removeLogoBackground?: boolean;
   }
 ): Promise<string> {
   const {
@@ -109,6 +110,7 @@ export async function overlayLogos(
     logoMaxWidthPercent = 12,
     logoMaxHeightPercent = 15,
     padding = 20,
+    removeLogoBackground = false, // Default: don't remove backgrounds (logos often have designed backgrounds)
   } = options || {};
 
   const { companyLogo, brandLogo } = extractLogos(components);
@@ -140,7 +142,7 @@ export async function overlayLogos(
       const maxLogoWidth = (mainImg.width * logoMaxWidthPercent) / 100;
       const maxLogoHeight = (mainImg.height * logoMaxHeightPercent) / 100;
 
-      // Helper to load and draw a logo with background removal
+      // Helper to load and draw a logo
       const drawLogo = (
         logoBase64: string,
         position: 'top-left' | 'top-right'
@@ -149,8 +151,10 @@ export async function overlayLogos(
           const logoImg = new Image();
 
           logoImg.onload = () => {
-            // Remove background from logo
-            const transparentLogo = removeBackground(logoImg);
+            // Optionally remove background from logo
+            const logoSource = removeLogoBackground
+              ? removeBackground(logoImg)
+              : logoImg;
 
             // Calculate scaled dimensions while maintaining aspect ratio
             let logoWidth = logoImg.width;
@@ -180,7 +184,7 @@ export async function overlayLogos(
             }
 
             // Draw the logo directly (no background rectangle)
-            ctx.drawImage(transparentLogo, x, y, logoWidth, logoHeight);
+            ctx.drawImage(logoSource, x, y, logoWidth, logoHeight);
 
             resolvelogo();
           };

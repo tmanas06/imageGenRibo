@@ -96,9 +96,9 @@ function App() {
         finalImage = await overlayLogos(finalImage, components, {
           companyLogoPosition: 'top-left',
           brandLogoPosition: 'top-right',
-          logoMaxWidthPercent: 12,
-          logoMaxHeightPercent: 15,
-          padding: 25,
+          logoMaxWidthPercent: 10,
+          logoMaxHeightPercent: 12,
+          padding: 15,
         });
         setOverlayStatus('Logos applied!');
       } catch (logoErr) {

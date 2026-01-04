@@ -126,14 +126,14 @@ function removeSloganBackground(
   console.log('Detected slogan background color:', { bgR, bgG, bgB });
 
   // Remove pixels similar to background color
-  const tolerance = 40; // Color similarity tolerance
+  const tolerance = 50; // Color similarity tolerance (increased)
 
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
 
-    // Check if pixel is similar to background color
+    // Check if pixel is similar to detected background color
     const diffR = Math.abs(r - bgR);
     const diffG = Math.abs(g - bgG);
     const diffB = Math.abs(b - bgB);
@@ -143,7 +143,18 @@ function removeSloganBackground(
     }
 
     // Also remove near-white pixels
-    if (r > 240 && g > 240 && b > 240) {
+    if (r > 235 && g > 235 && b > 235) {
+      data[i + 3] = 0;
+    }
+
+    // Remove cyan/teal backgrounds (common in pharma branding)
+    // Cyan has high G and B, lower R
+    if (g > 180 && b > 200 && r < 100) {
+      data[i + 3] = 0;
+    }
+
+    // Remove light cyan variations
+    if (g > 150 && b > 180 && r < 120 && (g + b) > (r * 3)) {
       data[i + 3] = 0;
     }
 
@@ -153,7 +164,7 @@ function removeSloganBackground(
     const minChannel = Math.min(r, g, b);
     const saturation = maxChannel > 0 ? (maxChannel - minChannel) / maxChannel : 0;
 
-    if (brightness > 220 && saturation < 0.15) {
+    if (brightness > 210 && saturation < 0.2) {
       data[i + 3] = 0;
     }
   }

@@ -96,13 +96,13 @@ function App() {
         finalImage = await overlayLogos(finalImage, components, {
           companyLogoPosition: 'top-right',  // Company (Glenmark) on right
           brandLogoPosition: 'top-left',     // Brand (nebZmart) on left
-          logoMaxWidthPercent: 8,            // Smaller logos to fit within bounds
-          logoMaxHeightPercent: 7,           // Reduced height
-          padding: 20,                       // More padding from edges
+          logoMaxWidthPercent: 14,           // Logo width: 14%
+          logoMaxHeightPercent: 10,          // Logo height: 10%
+          padding: 12,                       // Padding from edges
           overlaySlogan: true,
-          sloganMaxWidthPercent: 20,         // Width: 20% of image (bigger)
-          sloganMaxHeightPercent: 8,         // Height: max 8% of image (bigger)
-          sloganTopPercent: 23,              // Position: 23% from top (just below headline)
+          sloganMaxWidthPercent: 45,         // Width: 45% of image
+          sloganMaxHeightPercent: 10,        // Height: max 10% of image
+          sloganTopPercent: 14,              // Position: 14% from top (centered in white box)
         });
         setOverlayStatus('Logos and slogan applied!');
       } catch (logoErr) {

@@ -149,32 +149,33 @@ IMPORTANT: Generate a NEW person. Do NOT copy from reference images.
 </character>
 
 <layout>
-┌─────────────────────────────────────────────────────────────────┐
-│ [BLANK]                                             [BLANK]     │
-│ (logo added later)                          (logo added later)  │
-├─────────────────────────────────────────────────────────────────┤
-│                         HEADLINE                                │
-│                    (In Moderate to Severe COPD)                 │
-│                                                                 │
-│                    [BLANK - slogan image added later]           │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────┐    ┌────────────────────────────────────────┐     │
-│  │          │    │  BRAND_NAME + GENERIC_NAME             │     │
-│  │ CHARACTER│    │                                        │     │
-│  │          │    │  LEFT COLUMN:     RIGHT COLUMN:        │     │
-│  │          │    │   CLAIM_1           CLAIM_4            │     │
-│  │          │    │   CLAIM_2           CLAIM_5            │     │
-│  │          │    │   CLAIM_3           CLAIM_6            │     │
-│  └──────────┘    └────────────────────────────────────────┘     │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                         DISCLAIMER                              │
-└─────────────────────────────────────────────────────────────────┘
+FULL BLEED DESIGN - No white margins anywhere!
 
-⚠️ TOP CORNERS = BLANK (logos added via post-processing)
-⚠️ SLOGAN AREA = BLANK - NO boxes, NO rectangles, NO placeholders (slogan added via post-processing)
+┌══════════════════════════════════════════════════════════════════┐ ← EDGE
+│ [LOGO AREA]              HEADER BAR (FULL WIDTH)      [LOGO AREA]│
+│ (blank for logo)    "In Moderate to Severe COPD"   (blank for logo)│
+├══════════════════════════════════════════════════════════════════┤
+│                                                                   │
+│                    [BLANK AREA - slogan added later]              │
+│                                                                   │
+│  ┌──────────┐    ┌────────────────────────────────────────┐      │
+│  │          │    │  BRAND_NAME + GENERIC_NAME             │      │
+│  │ CHARACTER│    │                                        │      │
+│  │          │    │  LEFT COLUMN:     RIGHT COLUMN:        │      │
+│  │          │    │   CLAIM_1           CLAIM_4            │      │
+│  │          │    │   CLAIM_2           CLAIM_5            │      │
+│  │          │    │   CLAIM_3           CLAIM_6            │      │
+│  └──────────┘    └────────────────────────────────────────┘      │
+│                                                                   │
+├══════════════════════════════════════════════════════════════════┤
+│              DISCLAIMER BAR (FULL WIDTH)                         │
+└══════════════════════════════════════════════════════════════════┘ ← EDGE
+
+🔴 HEADER BAR = Must span FULL WIDTH from left edge to right edge
+🔴 DISCLAIMER BAR = Must span FULL WIDTH at bottom edge
+🔴 NO WHITE MARGINS = Background fills entire frame
+⚠️ TOP CORNERS = BLANK space for logos (within the header bar)
+⚠️ SLOGAN AREA = BLANK - NO boxes, NO rectangles, NO placeholders
 ⚠️ 6 CLAIMS = 6 SEPARATE BULLET POINTS (3 left, 3 right)
 </layout>
 
@@ -297,13 +298,22 @@ FORMAT: Single image like a PowerPoint slide or TV screen
 ASPECT_RATIO: 16:9 (sixteen by nine) - like a widescreen TV
 DIMENSIONS: Width=1920, Height=1080 (or proportional like 2560x1440)
 
+🔴 FULL BLEED DESIGN - CRITICAL:
+- Content must fill the ENTIRE frame edge-to-edge
+- NO white borders or margins around the edges
+- NO white space on left, right, top, or bottom edges
+- Header bar must span FULL WIDTH from left edge to right edge
+- Background colors must extend to ALL edges of the image
+- The design should "bleed" off all four edges
+
 ⚠️ DO NOT generate a wide banner (4:1 or 3:1 ratio)
 ⚠️ DO NOT generate a thin horizontal strip
+⚠️ DO NOT leave white margins or borders around the content
 ⚠️ The image should be roughly as tall as it is wide (16:9 means height is about 56% of width)
 
 EXAMPLE: If width is 1920px, height must be ~1080px (NOT 480px or 512px)
 
-QUALITY: Print-ready, sharp, no blur
+QUALITY: Print-ready, sharp, no blur, full bleed
 RESPONSE: Image only, no text explanation
 </output_format>
 `;

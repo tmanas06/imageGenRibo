@@ -90,20 +90,24 @@ function App() {
 
       let finalImage = result.imageBase64;
 
-      // Apply logo overlay
-      setOverlayStatus('Overlaying logos...');
+      // Apply logo and slogan overlay
+      setOverlayStatus('Overlaying logos and slogan...');
       try {
         finalImage = await overlayLogos(finalImage, components, {
-          companyLogoPosition: 'top-left',
-          brandLogoPosition: 'top-right',
-          logoMaxWidthPercent: 10,
-          logoMaxHeightPercent: 12,
-          padding: 15,
+          companyLogoPosition: 'top-right',  // Company (Glenmark) on right
+          brandLogoPosition: 'top-left',     // Brand (nebZmart) on left
+          logoMaxWidthPercent: 8,            // Smaller logos to fit within bounds
+          logoMaxHeightPercent: 7,           // Reduced height
+          padding: 20,                       // More padding from edges
+          overlaySlogan: true,
+          sloganMaxWidthPercent: 20,         // Width: 20% of image (bigger)
+          sloganMaxHeightPercent: 8,         // Height: max 8% of image (bigger)
+          sloganTopPercent: 23,              // Position: 23% from top (just below headline)
         });
-        setOverlayStatus('Logos applied!');
+        setOverlayStatus('Logos and slogan applied!');
       } catch (logoErr) {
-        console.warn('Logo overlay failed:', logoErr);
-        setOverlayStatus('Logo overlay skipped');
+        console.warn('Logo/slogan overlay failed:', logoErr);
+        setOverlayStatus('Overlay skipped');
       }
 
       // Apply Hindi overlay if needed

@@ -56,6 +56,7 @@ function buildMainPagePrompt(components: ComponentData[], language: string): str
   // Extract data - these should come from database with CORRECT spelling
   const brandName = getContent('INIT_01a') || 'nebZmart';
   const headline = getContent('INIT_03') || 'In Moderate to Severe COPD';
+  // Note: Slogan (INIT_08) is an IMAGE - it will be overlaid in post-processing
   const genericName = getContent('SOL_02') || 'Glycopyrronium Inhalation Solution 25 mcg';
   const disclaimer = getContent('REG_05') || 'For the use of a Registered Medical Practitioner, Hospital, or Laboratory only';
   const companyName = getContent('COMM_03') || 'Glenmark';
@@ -79,22 +80,27 @@ LANGUAGE: English only (regional translations handled separately)
 STEP-BY-STEP PROCESS:
 1. READ the <content> section carefully
 2. COPY each text string CHARACTER-FOR-CHARACTER (do not paraphrase)
-3. LEAVE TOP-LEFT and TOP-RIGHT corners completely EMPTY (no logos, no company names)
-4. GENERATE a new character matching the description
-5. USE reference images for colors/style only (ignore any logos in them)
-6. DOUBLE-CHECK spelling matches exactly what's in <content>
-7. VERIFY: No "Glenmark", no logos, no company graphics ANYWHERE
+3. LEAVE TOP-LEFT CORNER BLANK (logo added later)
+4. LEAVE TOP-RIGHT CORNER BLANK (logo added later)
+5. LEAVE BLANK SPACE below headline for slogan (slogan image added later)
+6. GENERATE a new character matching the description
+7. USE reference images for colors/style only
+8. DOUBLE-CHECK spelling: onset, exacerbation, secretions, Practitioner
 </chain_of_thought>
 
 <logo_placement>
-IMPORTANT: DO NOT generate any logos. Leave these areas EMPTY/BLANK:
-- TOP-LEFT corner: Reserved for company logo (will be added via post-processing)
-- TOP-RIGHT corner: Reserved for brand logo (will be added via post-processing)
+🚫 LOGO AREAS - LEAVE COMPLETELY BLANK 🚫
 
-The logo areas should be:
-- Clean background matching the header color
-- NO text, NO graphics, NO placeholder boxes
-- Just empty space where logos will be overlaid later
+TOP-LEFT CORNER: Leave EMPTY (no logo, no text, no "Glenmark", nothing)
+TOP-RIGHT CORNER: Leave EMPTY (no logo, no text, no "nebZmart", nothing)
+
+Logos will be added via post-processing. DO NOT generate:
+❌ Company name text (no "Glenmark" or similar)
+❌ Brand name text in header (no "nebZmart" in corners)
+❌ Any logo-like graphics in corners
+❌ Any colored boxes/panels in the header corners
+
+Just leave clean, empty space in both top corners.
 </logo_placement>
 
 <design_references>
@@ -109,27 +115,32 @@ BRAND_NAME: "${brandName}"
 GENERIC_NAME: "${genericName}"
 HEADLINE: "${headline}"
 
-📋 SIX SEPARATE CLAIMS (display each on its own line with an icon):
+⚠️ SLOGAN AREA: DO NOT generate ANY text, boxes, rectangles, or placeholders below the headline
+   Leave it COMPLETELY EMPTY - no borders, no boxes, no outlines, just blank background
+   (The slogan image will be overlaid in post-processing)
 
-CLAIM_1: "Quick onset of action within 5 mins"
-         ↳ Note: "onset" not "onest" or "onsst"
+📋 SIX CLAIMS - COPY THESE EXACT STRINGS:
 
-CLAIM_2: "12 hrs long lasting relief"
-         ↳ This is SEPARATE from Claim 1
-
-CLAIM_3: "Improves lung function by 120 ml"
-
-CLAIM_4: "Prevention of exacerbation"
-         ↳ Note: "exacerbation" (a-c-e-r-b-a-t-i-o-n)
-
-CLAIM_5: "Reduces Hyper secretions"
-         ↳ Note: "secretions" (s-e-c-r-e-t-i-o-n-s)
-
-CLAIM_6: "Improves FEV1"
+┌─────────────────────────────────────────────────┐
+│ CLAIM 1: Quick onset of action within 5 mins   │
+│          ^^^^^ = o-n-s-e-t (NOT "onest")       │
+├─────────────────────────────────────────────────┤
+│ CLAIM 2: 12 hrs long lasting relief            │
+├─────────────────────────────────────────────────┤
+│ CLAIM 3: Improves lung function by 120 ml      │
+├─────────────────────────────────────────────────┤
+│ CLAIM 4: Prevention of exacerbation            │
+│          ^^^^^^^^^^^^^ = e-x-a-c-e-r-b-a-t-i-o-n │
+├─────────────────────────────────────────────────┤
+│ CLAIM 5: Reduces Hyper secretions              │
+│          ^^^^^^^^^^ = s-e-c-r-e-t-i-o-n-s      │
+├─────────────────────────────────────────────────┤
+│ CLAIM 6: Improves FEV1                         │
+└─────────────────────────────────────────────────┘
 
 DISCLAIMER: "${disclaimer}"
 
-🔴 EACH CLAIM = 1 SEPARATE LINE WITH ITS OWN ICON 🔴
+🔴 COPY EXACTLY - DO NOT RETYPE FROM MEMORY 🔴
 </content>
 
 <character>
@@ -139,38 +150,45 @@ IMPORTANT: Generate a NEW person. Do NOT copy from reference images.
 
 <layout>
 ┌─────────────────────────────────────────────────────────────────┐
-│ [EMPTY]                                           [EMPTY]       │
-│ (reserved for logo overlay)                (reserved for logo)  │
-├──────────────────────── HEADLINE ───────────────────────────────┤
+│ [BLANK]                                             [BLANK]     │
+│ (logo added later)                          (logo added later)  │
+├─────────────────────────────────────────────────────────────────┤
+│                         HEADLINE                                │
+│                    (In Moderate to Severe COPD)                 │
 │                                                                 │
-│  ┌──────────┐    ┌────────────────────────────────────────┐    │
-│  │          │    │  BRAND_NAME                            │    │
-│  │ CHARACTER│    │  GENERIC_NAME                          │    │
-│  │          │    │                                        │    │
-│  │          │    │  LEFT COLUMN:     RIGHT COLUMN:        │    │
-│  │          │    │   CLAIM_1           CLAIM_4           │    │
-│  │          │    │   CLAIM_2           CLAIM_5           │    │
-│  │          │    │   CLAIM_3           CLAIM_6           │    │
-│  └──────────┘    └────────────────────────────────────────┘    │
+│                    [BLANK - slogan image added later]           │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────┐    ┌────────────────────────────────────────┐     │
+│  │          │    │  BRAND_NAME + GENERIC_NAME             │     │
+│  │ CHARACTER│    │                                        │     │
+│  │          │    │  LEFT COLUMN:     RIGHT COLUMN:        │     │
+│  │          │    │   CLAIM_1           CLAIM_4            │     │
+│  │          │    │   CLAIM_2           CLAIM_5            │     │
+│  │          │    │   CLAIM_3           CLAIM_6            │     │
+│  └──────────┘    └────────────────────────────────────────┘     │
 │                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                         DISCLAIMER                              │
 └─────────────────────────────────────────────────────────────────┘
 
+⚠️ TOP CORNERS = BLANK (logos added via post-processing)
+⚠️ SLOGAN AREA = BLANK - NO boxes, NO rectangles, NO placeholders (slogan added via post-processing)
 ⚠️ 6 CLAIMS = 6 SEPARATE BULLET POINTS (3 left, 3 right)
-⚠️ Each claim gets its own medical icon
-⚠️ DO NOT merge claims together
 </layout>
 
 <rules>
 <constraints>
-- DO NOT generate any logos - leave blank areas at top-left and top-right
+- TOP-LEFT and TOP-RIGHT corners must be BLANK (logos added later)
+- SLOGAN AREA must be COMPLETELY BLANK below headline - NO boxes, NO rectangles, NO borders, NO outlines, NO placeholders (slogan image added later)
 - All text copied EXACTLY from <content> section - character for character
 - 6 claims = 6 SEPARATE lines (never combine claims on same line)
 - No text generation or guessing - only copy provided text
 - English only (no Hindi/Tamil/Devanagari)
 - No overlapping elements
-- No "COMPANY" or "BRAND" text badges
+- DO NOT generate "Glenmark", "nebZmart", "Shwaas", or "Each breath matters" - these are overlaid
+- DO NOT draw any empty boxes or rectangular placeholders anywhere on the image
 </constraints>
 
 <freedom>
@@ -185,77 +203,93 @@ IMPORTANT: Generate a NEW person. Do NOT copy from reference images.
 <few_shot_examples>
 <text_copying_examples>
 <good>
-INPUT: CLAIM_1 = "Quick onset of action within 5 mins"
+INPUT: "Quick onset of action within 5 mins"
 OUTPUT: "Quick onset of action within 5 mins" ✓
-WHY: Character-for-character exact copy
+WHY: Exact copy - "onset" spelled correctly
 </good>
 
 <bad>
-INPUT: CLAIM_1 = "Quick onset of action within 5 mins"
-OUTPUT: "Quick onsst of action within 5 mins" ✗
-WHY: Misspelled - should COPY, not type from memory
-</bad>
-
-<bad>
-INPUT: CLAIM_4 = "Prevention of exacerbation"
-OUTPUT: "Prevention of exrarebbation" ✗
-WHY: Misspelled - COPY the exact text provided
+INPUT: "Quick onset of action within 5 mins"
+OUTPUT: "Quick onest of action within 5 mins" ✗
+WHY: "onest" is WRONG - should be "onset"
 </bad>
 
 <good>
-INPUT: DISCLAIMER = "For the use of a Registered Medical Practitioner, Hospital, or Laboratory only"
-OUTPUT: "For the use of a Registered Medical Practitioner, Hospital, or Laboratory only" ✓
-WHY: Exact copy of disclaimer text
+INPUT: "Prevention of exacerbation"
+OUTPUT: "Prevention of exacerbation" ✓
+WHY: Exact copy - "exacerbation" spelled correctly
 </good>
 
 <bad>
-INPUT: DISCLAIMER text provided
-OUTPUT: "For the use of a Registered Medical Practitinor, Hosptial, or Laboraatory only" ✗
-WHY: Multiple misspellings - should have copied EXACTLY
+INPUT: "Prevention of exacerbation"
+OUTPUT: "Prevention of exaberbation" ✗
+WHY: "exaberbation" is WRONG - should be "exacerbation"
+</bad>
+
+<good>
+INPUT: "Reduces Hyper secretions"
+OUTPUT: "Reduces Hyper secretions" ✓
+WHY: Exact copy - "secretions" spelled correctly
+</good>
+
+<bad>
+INPUT: "Reduces Hyper secretions"
+OUTPUT: "Reduces Hyper secrortions" ✗
+WHY: "secrortions" is WRONG - should be "secretions"
 </bad>
 </text_copying_examples>
 
 <logo_examples>
 <good>
-INPUT: Leave top-left corner empty
-OUTPUT: Clean teal/colored header bar with no graphics at corners ✓
-WHY: Proper empty space for logo overlay
+INPUT: Leave corners blank for logos
+OUTPUT: Clean header with empty space at TOP-LEFT and TOP-RIGHT ✓
+WHY: Proper blank space for logo overlay in post-processing
 </good>
 
 <bad>
-INPUT: Leave top-left corner empty
-OUTPUT: Generated "Glenmark" logo or company name ✗
-WHY: Should be EMPTY - logos added via post-processing
+INPUT: Leave corners blank
+OUTPUT: Generated "Glenmark" text or logo graphic in corner ✗
+WHY: Should be BLANK - logos added via post-processing
+</bad>
+
+<bad>
+INPUT: Leave corners blank
+OUTPUT: Large teal box with "nebZmart" text ✗
+WHY: Should be BLANK - no text, no boxes, no graphics in corners
 </bad>
 </logo_examples>
 </few_shot_examples>
 
 <spelling_check>
 🚫 BANNED MISSPELLINGS - If you write any of these, START OVER:
-- onsst, onest → CORRECT: onset
-- exrarebbation, exaerebation, exaberbation → CORRECT: exacerbation
-- secruitions, secrustions → CORRECT: secretions
-- Practitinor, Practitoner → CORRECT: Practitioner
-- Laboraatory, Labratory → CORRECT: Laboratory
-- Registerd → CORRECT: Registered
-- Hosptial → CORRECT: Hospital
-- rexepecation → NOT A WORD (don't use)
-- Rect bation → NOT A WORD (don't use)
 
-✅ SOLUTION: Copy text EXACTLY from <content> section - don't generate new text!
+❌ onest, onsst → ✅ onset (o-n-s-e-t)
+❌ exaberbation, exabrebation → ✅ exacerbation (e-x-a-c-e-r-b-a-t-i-o-n)
+❌ secrtations, secrestions, secrortions → ✅ secretions (s-e-c-r-e-t-i-o-n-s)
+❌ Practitoner, Practitoror → ✅ Practitioner (P-r-a-c-t-i-t-i-o-n-e-r)
+
+MOST COMMON ERRORS (you keep making these!):
+- "onest" is WRONG → write "onset"
+- "exaberbation" is WRONG → write "exacerbation"
+- "secrortions" is WRONG → write "secretions"
+
+✅ SOLUTION: Copy the EXACT text from the boxes in <content> section!
 </spelling_check>
 
 <self_correction>
-Before finalizing, COUNT and VERIFY:
-□ TOP-LEFT corner is BLANK? (no logo - will be added later)
-□ TOP-RIGHT corner is BLANK? (no logo - will be added later)
-□ Exactly 6 claim bullet points visible? (3 left + 3 right)
-□ CLAIM_1 and CLAIM_2 are on SEPARATE lines? (not merged)
-□ "onset" spelled correctly? (not "onest" or "onsst")
-□ "exacerbation" spelled correctly? (not "exaerebation")
-□ "secretions" spelled correctly? (not "secreutions")
-□ Disclaimer bar visible at bottom?
-□ Character is a NEW person (not from references)?
+Before finalizing, VERIFY SPELLING CHARACTER BY CHARACTER:
+
+□ "onset" - is it spelled o-n-s-e-t? (NOT "onest")
+□ "exacerbation" - is it spelled e-x-a-c-e-r-b-a-t-i-o-n? (NOT "exaberbation")
+□ "secretions" - is it spelled s-e-c-r-e-t-i-o-n-s? (NOT "secrortions")
+□ "Practitioner" - is it spelled P-r-a-c-t-i-t-i-o-n-e-r? (NOT "Practitoner")
+
+ALSO CHECK:
+□ TOP-LEFT corner is BLANK for logo overlay?
+□ TOP-RIGHT corner is BLANK for logo overlay?
+□ SLOGAN area is BLANK below headline for overlay?
+□ Exactly 6 claim bullet points visible?
+□ Disclaimer bar at bottom?
 </self_correction>
 
 <output_format>
@@ -517,12 +551,13 @@ export function buildApiContent(
   // Add main prompt
   content.push({ text: prompt });
 
-  // NOTE: We do NOT send logo images to the AI anymore
-  // Logos will be overlaid via post-processing (logoOverlayService.ts)
-  // This prevents the AI from trying to recreate/interpret logos
+  // NOTE: Logo images (COMM_04, INIT_01a) and Slogan (INIT_08) are NOT sent to AI
+  // They will be overlaid in post-processing by logoOverlayService.ts
+  // AI is instructed to leave blank spaces for these elements
 
-  // Add design reference images (excluding logos)
-  const references = getDesignReferenceImages(components);
+  // Add design reference images (excluding logos and slogan - they are overlaid)
+  const excludeIds = ['INIT_08', 'COMM_04', 'INIT_01a']; // All overlaid in post-processing
+  const references = getDesignReferenceImages(components).filter(r => !excludeIds.includes(r.id));
   if (references.length > 0) {
     content.push({
       text: `[DESIGN_REFERENCES] - Use these for color palette, typography, icons, and visual style. DO NOT copy any logos from these images:`

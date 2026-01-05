@@ -303,7 +303,7 @@ export async function getComponent(productId: string, componentId: ComponentId):
   }
 
   const { data, error } = await supabase
-    .from('repository')
+    .from('repositories')
     .select('*')
     .eq('product_id', productId)
     .eq('component_id', componentId)

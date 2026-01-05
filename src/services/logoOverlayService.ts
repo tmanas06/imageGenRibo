@@ -3,10 +3,11 @@
  *
  * Overlays actual logos from component images onto the generated LBL
  * This ensures logos are exactly as uploaded, not AI recreations
- * Now with background removal for cleaner logo placement
+ * Now with background removal and contour cropping for cleaner logo placement
  */
 
 import type { ComponentData } from './componentService';
+import { contourCropImage } from './contourCropService';
 
 /**
  * Remove white/light background from an image and return transparent version
@@ -140,11 +141,19 @@ export async function overlayLogos(
       const maxLogoWidth = (mainImg.width * logoMaxWidthPercent) / 100;
       const maxLogoHeight = (mainImg.height * logoMaxHeightPercent) / 100;
 
-      // Helper to load and draw a logo with background removal
-      const drawLogo = (
+      // Helper to load and draw a logo with contour crop and background removal
+      const drawLogo = async (
         logoBase64: string,
         position: 'top-left' | 'top-right'
       ): Promise<void> => {
+        // First, contour crop the logo to remove excess whitespace
+        let croppedBase64 = logoBase64;
+        try {
+          croppedBase64 = await contourCropImage(logoBase64, { padding: 3 });
+        } catch (cropErr) {
+          console.warn('Contour crop failed, using original:', cropErr);
+        }
+
         return new Promise((resolvelogo) => {
           const logoImg = new Image();
 
@@ -190,7 +199,7 @@ export async function overlayLogos(
             resolvelogo();
           };
 
-          logoImg.src = `data:image/png;base64,${logoBase64}`;
+          logoImg.src = `data:image/png;base64,${croppedBase64}`;
         });
       };
 

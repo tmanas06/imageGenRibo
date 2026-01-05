@@ -1,20 +1,8 @@
 import type { ComponentData, ComponentId } from '../services/componentService';
 import { COMPONENT_METADATA, groupComponentsBySection } from '../services/componentService';
 
-// Page types for multi-page LBL
-export type LBLPageType = 'main' | 'efficacy' | 'safety' | 'references';
-
-export interface LBLPageConfig {
-  type: LBLPageType;
-  title: string;
-  description: string;
-}
-
-export const LBL_PAGES: LBLPageConfig[] = [
-  { type: 'main', title: 'Main LBL', description: 'Brand, key claims, and patient visual' },
-  { type: 'efficacy', title: 'Efficacy Data', description: 'Clinical evidence, charts, and study results' },
-  { type: 'safety', title: 'Safety & Dosage', description: 'Dosage information, safety profile, contraindications' },
-];
+// Focus area types for LBL generation
+export type FocusAreaType = 'Efficacy' | 'Safety' | 'Evidence';
 
 // Logo component IDs - these are treated as assets to INSERT, not references
 const LOGO_COMPONENT_IDS: { id: ComponentId; label: string; position: string }[] = [
@@ -23,355 +11,319 @@ const LOGO_COMPONENT_IDS: { id: ComponentId; label: string; position: string }[]
 ];
 
 /**
- * Build AI prompt from fetched components
- * This replaces the old FIXED_PROMPT with dynamic content from Supabase
+ * Build AI prompt from fetched components based on focus area
  */
 export function buildPromptFromComponents(
   components: ComponentData[],
-  language: string = 'English',
-  pageType: LBLPageType = 'main'
+  focusArea: string = 'Efficacy'
 ): string {
-  // Get page-specific prompt
-  switch (pageType) {
-    case 'efficacy':
-      return buildEfficacyPagePrompt(components, language);
-    case 'safety':
-      return buildSafetyPagePrompt(components, language);
-    default:
-      return buildMainPagePrompt(components, language);
-  }
+  return buildFocusAreaPrompt(components, focusArea);
 }
 
 /**
- * Build prompt for the main LBL page
+ * Build prompt for LBL based on focus area
+ * Uses high-fidelity pharmaceutical LBL prompt template
+ * 
  */
-function buildMainPagePrompt(components: ComponentData[], language: string): string {
+function buildFocusAreaPrompt(components: ComponentData[], focusArea: string = 'Efficacy'): string {
   // Helper to get component content
   const getContent = (id: ComponentId): string | null => {
     const comp = components.find(c => c.component_id === id);
     return comp?.content || null;
   };
 
-  // Helper to check if component has image
-  const hasImage = (id: ComponentId): boolean => {
-    const comp = components.find(c => c.component_id === id);
-    return !!(comp?.image_path || comp?.image_base64);
+  // Helper to get all content for a component type (for multiple entries like claims)
+  const getAllContent = (id: ComponentId): string[] => {
+    return components
+      .filter(c => c.component_id === id && c.content)
+      .map(c => c.content as string);
   };
 
   // Extract key data from components
-  const brandName = getContent('INIT_01a') || 'Unknown Brand';
+  const brandName = getContent('INIT_01a') || '[Brand Name]';
   const brandVariant = getContent('INIT_01b') || '';
-  const headline = getContent('INIT_03') || '';
-  const tagline = getContent('INIT_06') || '';
-  const indication = getContent('INS_04') || '';
-  const genericName = getContent('SOL_02') || '';
-  const claims = getContent('SOL_01') || '';
-  const efficacyClaims = getContent('EVID_01') || '';
-  const dosage = getContent('SAFE_01') || '';
-  const disclaimer = getContent('REG_05') || 'For the use of a Registered Medical Practitioner, Hospital, or Laboratory only';
-  const companyName = getContent('COMM_03') || '';
+  const fullBrandName = brandVariant ? `${brandName} ${brandVariant}` : brandName;
 
-  // Check which logo images are available
-  const hasCompanyLogo = hasImage('COMM_04');
-  const hasBrandLogo = hasImage('INIT_02');
+  const genericComposition = getContent('SOL_02') || '[Generic / Composition]';
+  const indication = getContent('INS_04') || getContent('INIT_03') || '[Indication]';
+
+  // Collect all claims
+  const claims = getAllContent('SOL_01');
+  const efficacyClaims = getAllContent('EVID_01');
+  const safetyClaims = getAllContent('SAFE_03');
+
+  // Build focus area content
+  const focusAreaContent = buildFocusAreaContent(claims, efficacyClaims, safetyClaims, focusArea, components);
+
+  // Get focus-area-specific design instructions
+  const focusAreaDesign = getFocusAreaDesignInstructions(focusArea);
+
+  // Regulatory
+  const disclaimer = getContent('REG_05') || 'For the use of a Registered Medical Practitioner, Hospital, or Laboratory only';
+
+  // Brand color theme (extract from brand or use default)
+  const brandColorTheme = 'brand primary colors from logo and reference images';
 
   // Build the prompt
-  const prompt = `You are a Pharmaceutical Marketing Director, Medical Affairs Lead, Regulatory Compliance Officer, and Senior Visual Designer.
+  const prompt = `You are generating a high-fidelity, print-ready pharmaceutical
+Leave Behind Leaflet (LBL) for medical professionals.
 
-TASK: Generate a print-ready pharmaceutical Leave Behind Leaflet (LBL).
+================================================================================
+IMAGE REFERENCES (CRITICAL – DO NOT IGNORE)
+================================================================================
 
-OUTPUT: 2560x1440 pixels, LANDSCAPE orientation (16:9), print-ready quality.
+You are PROVIDED the following reference images as inputs:
 
-LANGUAGE: Generate ALL text in ENGLISH only. No Hindi, Tamil, or non-Latin scripts.
+1) BRAND LOGO IMAGE:
+   → [BRAND_LOGO] image provided below
+   RULE:
+   • Reproduce this logo EXACTLY as provided
+   • Do NOT redraw, reinterpret, recolor, stylize, or regenerate
+   • Preserve original proportions, colors, typography, and symbol
 
+2) COMPANY LOGO IMAGE:
+   → [COMPANY_LOGO] image provided below
+   RULE:
+   • Reproduce this logo EXACTLY as provided
+   • Do NOT redraw, reinterpret, recolor, stylize, or regenerate
 
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 1: LOGO IMAGES - INSERT EXACTLY AS PROVIDED
-═══════════════════════════════════════════════════════════════════════════════
+3) REFERENCE LBL DESIGN IMAGES:
+   → [DESIGN_REFERENCE] images provided below
 
-You are provided with specific logo images labeled below. These are NOT references to copy from - these ARE the actual logos. INSERT them exactly as provided.
+   PURPOSE:
+   • These images define the EXPECTED DESIGN QUALITY and VISUAL GRAMMAR
+   • They are NOT to be cloned or copied
+   • Use them ONLY to understand:
+     – professional pharmaceutical tone
+     – visual hierarchy
+     – information density
+     – modern LBL aesthetics (NOT PowerPoint)
 
-${hasCompanyLogo ? `[COMPANY_LOGO] IMAGE PROVIDED:
-- This image IS the company logo
-- INSERT this exact image in the TOP-LEFT corner
-- Do NOT redraw, recreate, or modify
-- Do NOT generate a new logo - USE THIS IMAGE` : ''}
+================================================================================
+CANVAS & QUALITY
+================================================================================
+• Orientation: LANDSCAPE
+• Resolution: 2560 x 1440
+• Print-ready, sharp, professional quality
+• Editorial / journal-grade design (NOT presentation slides)
 
-${hasBrandLogo ? `[BRAND_LOGO] IMAGE PROVIDED:
-- This image IS the brand/product logo
-- INSERT this exact image in the TOP-RIGHT corner
-- Do NOT redraw, recreate, or modify
-- Do NOT generate a new logo - USE THIS IMAGE` : ''}
+================================================================================
+BRANDING RULES (NON-NEGOTIABLE)
+================================================================================
+• Overall color theme MUST align with ${brandColorTheme}
+• Brand and company logos must be visually clean and unobstructed
+• Logos must NOT overlap content
+• Logos must NOT be used as decorative textures or backgrounds
 
-CRITICAL LOGO RULE:
-The logo images provided are FINAL ASSETS, not references.
-You must INSERT them into the output, not recreate them.
-If you generate your own version of any logo, the output is INVALID.
+================================================================================
+PRODUCT IDENTITY (CONTENT PROVIDED AS-IS)
+================================================================================
+Brand Name:
+${fullBrandName}
 
+Generic / Composition:
+${genericComposition}
 
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 2: BRAND INFORMATION
-═══════════════════════════════════════════════════════════════════════════════
+Indication:
+${indication}
 
-BRAND NAME: ${brandName}${brandVariant ? ` ${brandVariant}` : ''}
-GENERIC NAME: ${genericName || '[Extract from brand logo image]'}
-${headline ? `HEADLINE: ${headline}` : ''}
-${tagline ? `TAGLINE: ${tagline}` : ''}
-${companyName ? `COMPANY: ${companyName}` : ''}
+================================================================================
+FOCUS AREA LOGIC
+================================================================================
+ACTIVE FOCUS AREA:
+${focusArea}
+(Example values: Efficacy | Safety | Evidence)
 
+ALL CONTENT PROVIDED FROM DATABASE:
+${focusAreaContent}
 
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 3: CONTENT
-═══════════════════════════════════════════════════════════════════════════════
+INSTRUCTIONS:
+• The ACTIVE focus area must visually dominate the page
+• Related content may appear only as supporting information
+• Do NOT label sections on the design (no "Efficacy", "Safety" headers)
+• The page must read as ONE integrated scientific message
 
-INDICATION:
-${indication || '[Use indication from reference images]'}
+================================================================================
+DESIGN INTENT (THIS IS THE CORE INSTRUCTION)
+================================================================================
+• This is NOT a slide, brochure, or PPT
+• The page must function as a single visual argument
+• One dominant visual idea should anchor the message
+• Supporting information should flow, connect, or orbit naturally
+• Numbers and outcomes must feel embedded into the design
+• Visual hierarchy must be obvious without boxes or bullets
 
-KEY CLAIMS:
-${claims || efficacyClaims || '[Extract claims from reference images]'}
+================================================================================
+FOCUS-SPECIFIC DESIGN DIRECTION
+================================================================================
+${focusAreaDesign}
 
-DOSAGE:
-${dosage || '[Extract from reference images]'}
+================================================================================
+ALLOWED VISUAL LANGUAGE
+================================================================================
+• Modern pharmaceutical infographic style
+• Abstract scientific motifs (curves, gradients, molecular hints)
+• Visual metaphors for reduction, improvement, stability, protection
+• Subtle depth and layering is allowed
 
-DISCLAIMER:
+================================================================================
+STRICT ANTI-PATTERNS (ABSOLUTELY FORBIDDEN)
+================================================================================
+• No PowerPoint-style layouts
+• No bullet lists
+• No boxed content panels
+• No equal-weight text blocks
+• No rigid grids that fragment the page
+• No childish icons or clip-art
+• No decorative shapes without informational purpose
+
+================================================================================
+TYPOGRAPHY RULES
+================================================================================
+• Professional pharmaceutical typography
+• Short, precise phrases only (no paragraphs)
+• Clear hierarchy: dominant → supporting → regulatory
+• Scientific, credible tone — not marketing hype
+
+================================================================================
+REGULATORY FOOTER
+================================================================================
+Include the following text EXACTLY, unobtrusively:
 ${disclaimer}
 
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 4: CHARACTER - GENERATE NEW
-═══════════════════════════════════════════════════════════════════════════════
-
-${getCharacterPrompt(language)}
-
-IMPORTANT: Generate a COMPLETELY NEW person. Do NOT copy any person from reference images.
-
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 5: DESIGN REFERENCES
-═══════════════════════════════════════════════════════════════════════════════
-
-Other component images provided (labeled [DESIGN_REFERENCE]) are for style guidance. Use them for:
-- Color palette (extract exact colors)
-- Typography style (match font weights and hierarchy)
-- Icon styles (match the visual style)
-- Layout structure (follow the arrangement)
-- Visual theme (match the overall aesthetic)
-
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 6: LAYOUT
-═══════════════════════════════════════════════════════════════════════════════
-
-ORIENTATION: LANDSCAPE (wider than tall, 16:9)
-
-POSITIONS:
-- Company logo: TOP-LEFT corner
-- Brand logo: TOP-RIGHT corner
-- Character: LEFT side (30%)
-- Claims/Content: RIGHT side (70%)
-- Disclaimer: BOTTOM full-width
-
-SPACING: No overlapping elements. Clear separation between all components.
-
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 7: QUALITY
-═══════════════════════════════════════════════════════════════════════════════
-
-- All logos SHARP and IDENTICAL to provided images
-- All text LEGIBLE and correctly spelled
-- Spelling check: Registered, Practitioner, Hospital, Laboratory, Exacerbations
-- No blur, pixelation, or artifacts
-- Print-ready professional quality
-
-
-═══════════════════════════════════════════════════════════════════════════════
-SECTION 8: FORBIDDEN
-═══════════════════════════════════════════════════════════════════════════════
-
-- Do NOT generate new logos - use provided logo images exactly
-- Do NOT modify or recolor provided logos
-- Do NOT generate Hindi/Tamil/non-English text
-- Do NOT copy person from references
-- Do NOT create overlapping elements
-- Do NOT produce garbled or misspelled text
-
-
-OUTPUT: Final LBL image only. No explanations.`;
+================================================================================
+OUTPUT
+================================================================================
+• Generate ONE final image only
+• No explanations, labels, wireframes, or commentary
+• The result must look like a professionally designed pharmaceutical LBL,
+  NOT a presentation slide or PPT`;
 
   return prompt;
 }
 
 /**
- * Get character/patient prompt based on language/market
+ * Build focus area content from claims with focus-specific formatting
  */
-function getCharacterPrompt(language: string): string {
-  switch (language) {
-    case 'Hindi':
-      return `Generate a NEW PERSON:
-- North Indian village character, 55-70 years old
-- Brown/wheatish skin, weather-worn face
-- Simple white/cream kurta-pajama or dhoti
-- Warm genuine smile, healthy appearance
-- AVOID: Western clothes, urban styling`;
+function buildFocusAreaContent(
+  claims: string[],
+  efficacyClaims: string[],
+  safetyClaims: string[],
+  focusArea: string,
+  components: ComponentData[]
+): string {
+  const sections: string[] = [];
 
-    case 'Tamil':
-      return `Generate a NEW PERSON:
-- South Indian village character, 55-70 years old
-- Darker brown skin, Dravidian features
-- Simple cotton veshti/dhoti
-- Warm smile, humble village appearance
-- AVOID: Western clothes, modern styling`;
+  // Helper to get component content
+  const getContent = (id: ComponentId): string | null => {
+    const comp = components.find(c => c.component_id === id);
+    return comp?.content || null;
+  };
 
-    default:
-      return `Generate a NEW PERSON:
-- Modern urban Indian professional, 50-65 years old
-- Fair/wheatish complexion, well-groomed
-- Smart casual or semi-formal attire
-- Confident, healthy, professional appearance
-- AVOID: Rural attire, traditional village clothing`;
+  // Focus-specific primary content
+  if (focusArea === 'Efficacy') {
+    sections.push(`=== PRIMARY FOCUS: EFFICACY ===`);
+    sections.push(`VISUAL EMPHASIS: Clinical efficacy data, onset of action, duration of relief`);
+
+    if (efficacyClaims.length > 0) {
+      sections.push(`EFFICACY CLAIMS (DOMINANT):\n${efficacyClaims.map(c => `★ ${c}`).join('\n')}`);
+    }
+    if (claims.length > 0) {
+      sections.push(`KEY USP CLAIMS:\n${claims.map(c => `• ${c}`).join('\n')}`);
+    }
+
+    // Add efficacy-specific data
+    const studySummary = getContent('EVID_03');
+    if (studySummary) {
+      sections.push(`STUDY DATA:\n${studySummary}`);
+    }
   }
+
+  if (focusArea === 'Safety') {
+    sections.push(`=== PRIMARY FOCUS: SAFETY ===`);
+    sections.push(`VISUAL EMPHASIS: Tolerability, safety profile, well-tolerated therapy`);
+
+    if (safetyClaims.length > 0) {
+      sections.push(`SAFETY CLAIMS (DOMINANT):\n${safetyClaims.map(c => `★ ${c}`).join('\n')}`);
+    }
+
+    // Add safety-specific data
+    const dosageInfo = getContent('SAFE_01');
+    const sideEffects = getContent('SAFE_04');
+    const contraindications = getContent('SAFE_05');
+
+    if (dosageInfo) sections.push(`DOSAGE:\n${dosageInfo}`);
+    if (sideEffects) sections.push(`SIDE EFFECTS:\n${sideEffects}`);
+    if (contraindications) sections.push(`CONTRAINDICATIONS:\n${contraindications}`);
+
+    // Supporting claims
+    if (claims.length > 0) {
+      sections.push(`SUPPORTING USP CLAIMS:\n${claims.slice(0, 3).map(c => `• ${c}`).join('\n')}`);
+    }
+  }
+
+  if (focusArea === 'Evidence') {
+    sections.push(`=== PRIMARY FOCUS: CLINICAL EVIDENCE ===`);
+    sections.push(`VISUAL EMPHASIS: Scientific data, clinical studies, guidelines, p-values`);
+
+    // Add evidence-specific data
+    const studySummary = getContent('EVID_03');
+    const guidelineText = getContent('EVID_05');
+    const references = getContent('REG_02');
+
+    if (efficacyClaims.length > 0) {
+      sections.push(`EVIDENCE-BASED CLAIMS (DOMINANT):\n${efficacyClaims.map(c => `★ ${c}`).join('\n')}`);
+    }
+    if (studySummary) sections.push(`CLINICAL STUDY SUMMARY:\n${studySummary}`);
+    if (guidelineText) sections.push(`GUIDELINE RECOMMENDATIONS:\n${guidelineText}`);
+    if (references) sections.push(`REFERENCES:\n${references}`);
+
+    // Supporting claims
+    if (claims.length > 0) {
+      sections.push(`SUPPORTING USP CLAIMS:\n${claims.slice(0, 3).map(c => `• ${c}`).join('\n')}`);
+    }
+  }
+
+  return sections.join('\n\n') || '[No content provided - extract from reference images]';
 }
 
 /**
- * Build prompt for the efficacy/evidence page
+ * Get focus-area-specific design instructions
  */
-function buildEfficacyPagePrompt(components: ComponentData[], _language: string): string {
-  const getContent = (id: ComponentId): string | null => {
-    const comp = components.find(c => c.component_id === id);
-    return comp?.content || null;
+function getFocusAreaDesignInstructions(focusArea: string): string {
+  const instructions: Record<string, string> = {
+    'Efficacy': `
+EFFICACY FOCUS - DESIGN DIRECTION:
+• Dominant visual: Speed/time metaphor (clock, stopwatch, timeline)
+• Show "onset" and "duration" as the hero message
+• Use dynamic, energetic visual flow
+• Color emphasis: Brand colors with action-oriented accents
+• Data visualization: Timeline showing onset → sustained relief
+• Metaphor suggestions: Racing pulse calming down, breath flowing freely
+• Numbers to highlight: onset time (5 mins), duration (12 hrs)`,
+
+    'Safety': `
+SAFETY FOCUS - DESIGN DIRECTION:
+• Dominant visual: Protection/shield metaphor, calm and reassuring
+• Show "well-tolerated" and "safe profile" as the hero message
+• Use calm, stable visual flow - NOT aggressive
+• Color emphasis: Softer brand colors, green accents for safety
+• Data visualization: Safety percentages, tolerability charts
+• Metaphor suggestions: Protective embrace, steady foundation, balanced scale
+• Convey: Trust, reliability, gentle efficacy`,
+
+    'Evidence': `
+EVIDENCE FOCUS - DESIGN DIRECTION:
+• Dominant visual: Scientific/clinical data presentation
+• Show clinical study results and p-values as hero content
+• Use structured, authoritative visual flow
+• Color emphasis: Professional, scientific palette
+• Data visualization: Bar charts, statistical comparisons, study endpoints
+• Metaphor suggestions: Scientific precision, proven results, guideline alignment
+• Include: Study names, patient numbers, statistical significance markers`
   };
 
-  const brandName = getContent('INIT_01a') || 'Product';
-  const efficacyClaims = getContent('EVID_01') || '';
-  const studySummary = getContent('EVID_03') || '';
-  const guidelineText = getContent('EVID_05') || '';
-  const companyName = getContent('COMM_03') || '';
-
-  return `You are a Pharmaceutical Marketing Director creating an EFFICACY DATA page for a Leave Behind Leaflet.
-
-TASK: Generate Page 2 - EFFICACY & CLINICAL EVIDENCE page for ${brandName}
-
-OUTPUT: Landscape orientation (16:9), high resolution, print-ready quality.
-
-LOGO IMAGES: Logo images are provided separately labeled [COMPANY_LOGO] and [BRAND_LOGO].
-INSERT these exact images - do NOT recreate them.
-
-PAGE CONTENT - EFFICACY DATA:
-
-BRAND NAME: ${brandName}
-COMPANY: ${companyName}
-
-EFFICACY CLAIMS:
-${efficacyClaims || 'Show clinical efficacy data with charts and statistics'}
-
-STUDY SUMMARY:
-${studySummary || 'Include key clinical study results'}
-
-GUIDELINE RECOMMENDATIONS:
-${guidelineText || 'Reference relevant treatment guidelines'}
-
-LAYOUT FOR THIS PAGE:
-- Company logo: TOP-LEFT corner (use provided [COMPANY_LOGO] image)
-- Brand logo: TOP-RIGHT corner (use provided [BRAND_LOGO] image)
-- Page title: "CLINICAL EFFICACY" or "EVIDENCE" prominently displayed
-- Charts/Graphs: Show efficacy data visually (bar charts, line graphs)
-- Key statistics highlighted in colored boxes
-- Study references at bottom
-- Disclaimer bar at BOTTOM
-
-DESIGN ELEMENTS TO INCLUDE:
-- Bar charts showing efficacy percentages
-- Before/After comparisons if applicable
-- Statistical significance indicators (p-values)
-- Icons representing improvements (lungs, breathing, etc.)
-
-COLORS: Match the reference images color scheme
-TEXT: ALL in ENGLISH only
-QUALITY: Sharp, clear, print-ready
-
-Generate ONLY the final image. No explanations.`;
-}
-
-/**
- * Build prompt for the safety/dosage page
- */
-function buildSafetyPagePrompt(components: ComponentData[], _language: string): string {
-  const getContent = (id: ComponentId): string | null => {
-    const comp = components.find(c => c.component_id === id);
-    return comp?.content || null;
-  };
-
-  const brandName = getContent('INIT_01a') || 'Product';
-  const genericName = getContent('SOL_02') || '';
-  const dosageInfo = getContent('SAFE_01') || '';
-  const strengthForms = getContent('SAFE_02') || '';
-  const safetyClaims = getContent('SAFE_03') || '';
-  const sideEffects = getContent('SAFE_04') || '';
-  const contraindications = getContent('SAFE_05') || '';
-  const companyName = getContent('COMM_03') || '';
-  const references = getContent('REG_02') || '';
-  const abbreviatedPI = getContent('REG_01') || '';
-
-  return `You are a Pharmaceutical Marketing Director creating a SAFETY & DOSAGE page for a Leave Behind Leaflet.
-
-TASK: Generate Page 3 - SAFETY & DOSAGE INFORMATION page for ${brandName}
-
-OUTPUT: Landscape orientation (16:9), high resolution, print-ready quality.
-
-LOGO IMAGES: Logo images are provided separately labeled [COMPANY_LOGO] and [BRAND_LOGO].
-INSERT these exact images - do NOT recreate them.
-
-PAGE CONTENT - SAFETY & DOSAGE:
-
-BRAND NAME: ${brandName}
-GENERIC NAME: ${genericName}
-COMPANY: ${companyName}
-
-DOSAGE INFORMATION:
-${dosageInfo || 'Standard dosing as per prescribing information'}
-
-AVAILABLE STRENGTHS/FORMS:
-${strengthForms || 'List available formulations'}
-
-SAFETY PROFILE:
-${safetyClaims || 'Well-tolerated safety profile'}
-
-SIDE EFFECTS:
-${sideEffects || 'Common side effects to be listed'}
-
-CONTRAINDICATIONS:
-${contraindications || 'Standard contraindications apply'}
-
-ABBREVIATED PRESCRIBING INFORMATION:
-${abbreviatedPI || 'Include abbreviated PI'}
-
-REFERENCES:
-${references || 'Clinical references'}
-
-LAYOUT FOR THIS PAGE:
-- Company logo: TOP-LEFT corner (use provided [COMPANY_LOGO] image)
-- Brand logo: TOP-RIGHT corner (use provided [BRAND_LOGO] image)
-- Page title: "DOSAGE & SAFETY" prominently displayed
-- Dosage table/grid showing strengths and administration
-- Safety information in organized sections
-- Side effects in a clear list format
-- Contraindications highlighted (use caution colors)
-- References section at bottom
-- Full prescribing information disclaimer
-- Disclaimer bar at BOTTOM
-
-DESIGN ELEMENTS:
-- Dosage icons (pills, inhalers, etc.)
-- Warning symbols for contraindications
-- Clean table layouts for dosing information
-- Color coding: Green for safety, Yellow/Orange for cautions
-
-COLORS: Match the reference images color scheme
-TEXT: ALL in ENGLISH only
-QUALITY: Sharp, clear, print-ready
-
-Generate ONLY the final image. No explanations.`;
+  return instructions[focusArea] || instructions['Efficacy'];
 }
 
 /**

@@ -6,13 +6,78 @@
  */
 
 /**
- * Find the bounding box of non-white/non-transparent content in an image
+ * Get the dominant background color by sampling corners
+ */
+function detectBackgroundColor(
+  imageData: ImageData
+): { r: number; g: number; b: number } {
+  const { data, width, height } = imageData;
+
+  // Sample corners (5 pixels in from each corner)
+  const samplePoints = [
+    { x: 2, y: 2 },                    // top-left
+    { x: width - 3, y: 2 },            // top-right
+    { x: 2, y: height - 3 },           // bottom-left
+    { x: width - 3, y: height - 3 },   // bottom-right
+    { x: Math.floor(width / 2), y: 2 }, // top-center
+    { x: 2, y: Math.floor(height / 2) }, // left-center
+  ];
+
+  const colors: { r: number; g: number; b: number }[] = [];
+
+  for (const point of samplePoints) {
+    const idx = (point.y * width + point.x) * 4;
+    colors.push({
+      r: data[idx],
+      g: data[idx + 1],
+      b: data[idx + 2]
+    });
+  }
+
+  // Find the most common color (simple approach: average of similar colors)
+  // Group colors that are within tolerance
+  const tolerance = 30;
+  let bestGroup: typeof colors = [];
+
+  for (let i = 0; i < colors.length; i++) {
+    const group = [colors[i]];
+    for (let j = 0; j < colors.length; j++) {
+      if (i !== j) {
+        const diff = Math.abs(colors[i].r - colors[j].r) +
+                     Math.abs(colors[i].g - colors[j].g) +
+                     Math.abs(colors[i].b - colors[j].b);
+        if (diff < tolerance * 3) {
+          group.push(colors[j]);
+        }
+      }
+    }
+    if (group.length > bestGroup.length) {
+      bestGroup = group;
+    }
+  }
+
+  // Average the best group
+  const avgR = Math.round(bestGroup.reduce((s, c) => s + c.r, 0) / bestGroup.length);
+  const avgG = Math.round(bestGroup.reduce((s, c) => s + c.g, 0) / bestGroup.length);
+  const avgB = Math.round(bestGroup.reduce((s, c) => s + c.b, 0) / bestGroup.length);
+
+  console.log(`[ContourCrop] Detected background color: RGB(${avgR}, ${avgG}, ${avgB})`);
+
+  return { r: avgR, g: avgG, b: avgB };
+}
+
+/**
+ * Find the bounding box of content (non-background) in an image
+ * Detects background color automatically from corners
  */
 function findContentBounds(
   imageData: ImageData,
-  threshold: number = 250
+  tolerance: number = 40
 ): { top: number; left: number; bottom: number; right: number } | null {
   const { data, width, height } = imageData;
+
+  // Detect background color from corners
+  const bgColor = detectBackgroundColor(imageData);
 
   let top = height;
   let left = width;
@@ -27,10 +92,14 @@ function findContentBounds(
       const b = data[idx + 2];
       const a = data[idx + 3];
 
-      // Check if pixel is NOT background (not white/transparent)
+      // Check if pixel is NOT background
+      const colorDiff = Math.abs(r - bgColor.r) +
+                        Math.abs(g - bgColor.g) +
+                        Math.abs(b - bgColor.b);
+
       const isBackground =
         a < 10 || // Transparent
-        (r > threshold && g > threshold && b > threshold); // White
+        colorDiff < tolerance * 3; // Similar to detected background
 
       if (!isBackground) {
         if (y < top) top = y;
@@ -57,13 +126,13 @@ export async function contourCropImage(
   imageBase64: string,
   options?: {
     padding?: number; // Padding around content (default: 5)
-    threshold?: number; // White threshold (default: 250)
+    tolerance?: number; // Color tolerance for background detection (default: 40)
     minSize?: number; // Minimum dimension (default: 20)
   }
 ): Promise<string> {
   const {
     padding = 5,
-    threshold = 250,
+    tolerance = 40,
     minSize = 20
   } = options || {};
 
@@ -71,6 +140,8 @@ export async function contourCropImage(
     const img = new Image();
 
     img.onload = () => {
+      console.log(`[ContourCrop] Image loaded: ${img.width}x${img.height}`);
+
       // Create canvas to analyze image
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
@@ -88,15 +159,17 @@ export async function contourCropImage(
       // Get image data
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      // Find content bounds
-      const bounds = findContentBounds(imageData, threshold);
+      // Find content bounds (auto-detects background color)
+      const bounds = findContentBounds(imageData, tolerance);
 
       if (!bounds) {
         // No content found, return original
-        console.warn('No content bounds found, returning original image');
+        console.warn('[ContourCrop] No content bounds found, returning original image');
         resolve(imageBase64);
         return;
       }
+
+      console.log(`[ContourCrop] Content bounds found: top=${bounds.top}, left=${bounds.left}, bottom=${bounds.bottom}, right=${bounds.right}`);
 
       // Add padding
       const cropLeft = Math.max(0, bounds.left - padding);
@@ -107,9 +180,11 @@ export async function contourCropImage(
       const cropWidth = cropRight - cropLeft;
       const cropHeight = cropBottom - cropTop;
 
+      console.log(`[ContourCrop] Crop dimensions: ${cropWidth}x${cropHeight} (original: ${img.width}x${img.height})`);
+
       // Check minimum size
       if (cropWidth < minSize || cropHeight < minSize) {
-        console.warn('Cropped size too small, returning original');
+        console.warn('[ContourCrop] Cropped size too small, returning original');
         resolve(imageBase64);
         return;
       }
@@ -149,7 +224,7 @@ export async function contourCropImages(
   images: { id: string; base64: string }[],
   options?: {
     padding?: number;
-    threshold?: number;
+    tolerance?: number;
   }
 ): Promise<{ id: string; base64: string; cropped: boolean }[]> {
   const results: { id: string; base64: string; cropped: boolean }[] = [];

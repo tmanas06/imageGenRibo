@@ -10,11 +10,63 @@ import type { ComponentData } from './componentService';
 import { contourCropImage } from './contourCropService';
 
 /**
- * Remove white/light background from an image and return transparent version
+ * Detect background color by sampling corners of the image
+ */
+function detectLogoBackgroundColor(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number
+): { r: number; g: number; b: number } {
+  // Sample corners
+  const samplePoints = [
+    { x: 2, y: 2 },
+    { x: width - 3, y: 2 },
+    { x: 2, y: height - 3 },
+    { x: width - 3, y: height - 3 },
+  ];
+
+  const colors: { r: number; g: number; b: number }[] = [];
+
+  for (const point of samplePoints) {
+    const pixel = ctx.getImageData(point.x, point.y, 1, 1).data;
+    colors.push({ r: pixel[0], g: pixel[1], b: pixel[2] });
+  }
+
+  // Find most common color (average similar ones)
+  const tolerance = 30;
+  let bestGroup: typeof colors = [colors[0]];
+
+  for (let i = 0; i < colors.length; i++) {
+    const group = [colors[i]];
+    for (let j = 0; j < colors.length; j++) {
+      if (i !== j) {
+        const diff = Math.abs(colors[i].r - colors[j].r) +
+                     Math.abs(colors[i].g - colors[j].g) +
+                     Math.abs(colors[i].b - colors[j].b);
+        if (diff < tolerance * 3) {
+          group.push(colors[j]);
+        }
+      }
+    }
+    if (group.length > bestGroup.length) {
+      bestGroup = group;
+    }
+  }
+
+  const avgR = Math.round(bestGroup.reduce((s, c) => s + c.r, 0) / bestGroup.length);
+  const avgG = Math.round(bestGroup.reduce((s, c) => s + c.g, 0) / bestGroup.length);
+  const avgB = Math.round(bestGroup.reduce((s, c) => s + c.b, 0) / bestGroup.length);
+
+  return { r: avgR, g: avgG, b: avgB };
+}
+
+/**
+ * Remove background from an image and return transparent version
+ * Auto-detects background color from corners
  */
 function removeBackground(
   logoImg: HTMLImageElement,
-  threshold: number = 240 // pixels with RGB values above this are considered background
+  tolerance: number = 50 // color tolerance for background detection
 ): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = logoImg.width;
@@ -26,6 +78,10 @@ function removeBackground(
   // Draw the logo
   ctx.drawImage(logoImg, 0, 0);
 
+  // Detect background color from corners
+  const bgColor = detectLogoBackgroundColor(ctx, canvas.width, canvas.height);
+  console.log(`[RemoveBackground] Detected background: RGB(${bgColor.r}, ${bgColor.g}, ${bgColor.b})`);
+
   // Get image data
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
@@ -36,21 +92,26 @@ function removeBackground(
     const g = data[i + 1];
     const b = data[i + 2];
 
-    // Check if pixel is near-white (background)
-    if (r > threshold && g > threshold && b > threshold) {
+    // Check if pixel matches detected background color
+    const colorDiff = Math.abs(r - bgColor.r) +
+                      Math.abs(g - bgColor.g) +
+                      Math.abs(b - bgColor.b);
+
+    if (colorDiff < tolerance * 3) {
       // Make it transparent
       data[i + 3] = 0;
     }
 
-    // Also check for very light gray backgrounds
-    const brightness = (r + g + b) / 3;
-    if (brightness > 250) {
+    // Also check for near-white backgrounds (always remove)
+    if (r > 245 && g > 245 && b > 245) {
       data[i + 3] = 0;
     }
   }
 
   // Put the modified data back
   ctx.putImageData(imageData, 0, 0);
+
+  console.log(`[RemoveBackground] Background removed successfully`);
 
   return canvas;
 }
@@ -114,6 +175,10 @@ export async function overlayLogos(
 
   const { companyLogo, brandLogo } = extractLogos(components);
 
+  console.log('=== LOGO OVERLAY DEBUG ===');
+  console.log('Company logo (COMM_04) found:', !!companyLogo, companyLogo ? `${companyLogo.length} chars` : 'null');
+  console.log('Brand logo (INIT_02) found:', !!brandLogo, brandLogo ? `${brandLogo.length} chars` : 'null');
+
   if (!companyLogo && !brandLogo) {
     console.log('No logos found in components, returning original image');
     return imageBase64;
@@ -146,10 +211,15 @@ export async function overlayLogos(
         logoBase64: string,
         position: 'top-left' | 'top-right'
       ): Promise<void> => {
+        console.log(`Drawing logo at ${position}, original size: ${logoBase64.length} chars`);
+
         // First, contour crop the logo to remove excess whitespace
         let croppedBase64 = logoBase64;
         try {
+          console.log('Attempting contour crop...');
           croppedBase64 = await contourCropImage(logoBase64, { padding: 3 });
+          const didCrop = croppedBase64 !== logoBase64;
+          console.log(`Contour crop ${didCrop ? 'SUCCESS' : 'no change'}, new size: ${croppedBase64.length} chars`);
         } catch (cropErr) {
           console.warn('Contour crop failed, using original:', cropErr);
         }

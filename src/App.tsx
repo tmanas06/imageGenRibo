@@ -1,29 +1,36 @@
 import { useState, useCallback, useEffect } from 'react';
-import { FileUpload } from './components/FileUpload';
-import { CompanySelect } from './components/CompanySelect';
-import { BrandSelect, getProductsByCompany } from './components/BrandSelect';
-import { ThemeSelect } from './components/ThemeSelect';
-import { LanguageSelect } from './components/LanguageSelect';
+import { ProductSelect } from './components/ProductSelect';
+import { FocusAreaSelect } from './components/FocusAreaSelect';
 import { ImageOutput } from './components/ImageOutput';
 import { GenerateButton } from './components/GenerateButton';
 import { generateImage, isApiConfigured } from './services/nanoBananaService';
-import { processFile } from './utils/pdfUtils';
+import { overlayLogos } from './services/logoOverlayService';
+import { extractAllContent, getExtractionSummary } from './services/contentExtractorService';
+import type { ComponentData, Document } from './services/componentService';
+import { buildPromptFromComponents, buildApiContent } from './utils/promptBuilder';
 
-const FIXED_PROMPT = `System Roles: Act as a Pharmaceutical Marketing Director, Medical Affairs Lead, Regulatory Compliance Officer (UCPMP 2025 Expert), and Senior Visual Designer. Task: Generate a high-fidelity, print-ready COMPLETELY NEW variation of the attached Leave Behind Leaflet (LBL). OUTPUT RESOLUTION: 2K Resolution (2560x1440 pixels minimum). Crystal clear, sharp, print-ready quality. 1. BRAND IDENTITY - COPY EXACT PIXELS (Non-Negotiable): Identify and COPY these elements EXACTLY as they appear in source: COMPANY LOGO: Usually top-right corner. Copy the exact logo with exact colors, exact icon, exact text, exact tagline. No distortion, no color change, no modification. Must be crisp and clear. BRAND NAME: The primary product name with its unique typography. Copy exact font styling, exact colors, exact letter arrangements, exact symbols (TM, R). If brand has special character styling (colored letters, unique fonts), copy exactly. BRAND VARIANT: Any suffix like dosage variants, formulation types. Copy exact styling. CAMPAIGN LOGO: If present (usually top-left), copy exactly with all colors and text intact. QR CODE: Copy exact QR code image. Must remain functional. BADGES AND CERTIFICATION MARKS: Any shield, badge, seal, award, or certification graphic that contains text. DO NOT regenerate. COPY the exact badge image pixel-for-pixel. PLUS/COMBINATION SYMBOLS: If products are shown in combination with "+" or "&", copy exact styling. RULE: These elements are trademark assets. They must appear IDENTICAL to source. 2. TEXT CONTENT - EXACT WORDING, CRYSTAL CLEAR: Extract and include ALL text from source with EXACT wording: - Main headline - Generic names and compositions - All claims and benefits with exact numbers and percentages - All superscript citations - Indication statements - Dosage information - Any other body text RULE: Every word must be spelled correctly and clearly readable. No garbled text. No random characters. 3. DISCLAIMER AND REGULATORY TEXT - USE PROVIDED TEXT: DO NOT extract disclaimer from source image. Instead, use this EXACT text in the bottom disclaimer area: "Ajaduo is a registered trademark owned by Boehringer Ingelheim International GmbH. Used under license." Additional required text: "For the use of a Registered Medical Practitioner or a Hospital or a Laboratory only" FORMAT REQUIREMENTS: - Clean, legible sans-serif font - Proper font size (readable but not dominant) - High contrast against background - Properly spaced and aligned - NO smudging, NO blur, NO garbled characters - Professional pharmaceutical footer styling 4. CHARACTER/PATIENT IMAGE - GENERATE NEW PERSON: DO NOT copy the human from source. Instead: Step 1: Analyze the character in source - note their age, gender, ethnicity, attire, pose, expression, context. Step 2: Generate a COMPLETELY NEW PERSON matching this description. Step 3: The new person should look DIFFERENT but fit the same role. RULE: Human characters must be freshly generated. New face, new person, same vibe. Single instance only. 5. DESIGN ELEMENTS - COMPLETE CREATIVE FREEDOM: Create COMPLETELY NEW design for: - Background: New colors, patterns, gradients, shapes - Icons: New style, new containers, new visual treatment - Layout: New arrangement of elements within same orientation - Color Palette: New harmonious scheme different from source - Decorative Elements: New borders, dividers, shapes - Typography: New fonts for non-brand text RULE: Design should look like a fresh campaign while maintaining brand identity. 6. QUALITY STANDARDS: - OUTPUT RESOLUTION: 2K (2560x1440 pixels minimum) - All elements must be SHARP and CRYSTAL CLEAR - All logos must be CRISP and HIGH-RESOLUTION - All badges must be SHARP with READABLE text - ALL TEXT must be LEGIBLE - no blurry, garbled, or random characters - Disclaimer text must be CLEAN, CLEAR, and PERFECTLY READABLE - No pixelation, no blur, no artifacts, no smudging - Print-ready professional quality 7. STRUCTURE RULES: - Company logo stays in original corner (usually top-right) - Campaign logo stays in original corner (usually top-left) - Brand name stays in upper/prominent area - Badges stay in similar position as source - Disclaimer stays at bottom in clean readable format - Same orientation as source (horizontal/vertical) 8. NEGATIVE CONSTRAINTS: NO modifying brand name font, colors, or styling NO distorting company logo NO regenerating badges with text - COPY them exactly NO changing QR code NO extracting disclaimer from source - use provided text only NO garbled, smudged, or unreadable text anywhere NO misspelled words NO blurry, pixelated, or low-quality output NO resolution below 2K NO keeping the same human character from source NO explanatory text - output ONLY the final image Output Goal: A 2K resolution, crystal clear, professional pharmaceutical LBL where BRAND IDENTITY is pixel-perfect, DISCLAIMER uses the provided clean text, HUMAN CHARACTER is freshly generated, and DESIGN is completely fresh. Output ONLY the final image.`;
+// Helper to get display name for document
+function getDocumentDisplayName(doc: Document): string {
+  return (doc.name || doc.title || doc.brand_name || `Document ${doc.id.substring(0, 8)}`) as string;
+}
 
 function App() {
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [referenceImages, setReferenceImages] = useState<string[]>([]);
-  const [company, setCompany] = useState('lupin');
-  const [brand, setBrand] = useState('ajaduo');
-  const [theme, setTheme] = useState('all');
-  const [language, setLanguage] = useState('English');
-  const [prompt] = useState(FIXED_PROMPT);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [imageMimeType, setImageMimeType] = useState('image/png');
+  // Document/Component state (replaces file upload)
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [components, setComponents] = useState<ComponentData[]>([]);
+
+  // Generation settings
+  const [focusArea, setFocusArea] = useState('Efficacy');
+
+  // Output state - single image
+  const [generatedImage, setGeneratedImage] = useState<{ image: string; mimeType: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [_isExtracting, setIsExtracting] = useState(false); // Used for future UI enhancement
+  const [extractionProgress, setExtractionProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [overlayStatus, setOverlayStatus] = useState<string | null>(null);
+
+  // UI state
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('lblDarkMode');
     return saved ? JSON.parse(saved) : false;
@@ -33,36 +40,18 @@ function App() {
     localStorage.setItem('lblDarkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
-  // When company changes, update brand to first product of that company
-  const handleCompanyChange = useCallback((newCompany: string) => {
-    setCompany(newCompany);
-    const products = getProductsByCompany(newCompany);
-    if (products.length > 0) {
-      setBrand(products[0].code);
-    }
-  }, []);
-
-  const handleFileSelect = useCallback(async (selectedFile: File) => {
-    setFile(selectedFile);
+  // Handle document selection from Supabase
+  const handleDocumentSelect = useCallback((doc: Document, docComponents: ComponentData[]) => {
+    setSelectedDocument(doc);
+    setComponents(docComponents);
     setError(null);
-
-    try {
-      const result = await processFile(selectedFile);
-      setReferenceImages(result.images);
-      const urls = result.images.map(base64 => `data:image/jpeg;base64,${base64}`);
-      setPreviewUrls(urls);
-    } catch (err) {
-      console.error('Error processing file:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(`Failed to process file: ${errorMessage}`);
-      setPreviewUrls([]);
-      setReferenceImages([]);
-    }
+    setGeneratedImage(null);
   }, []);
 
+  // Generate LBL from components
   const handleGenerate = useCallback(async () => {
-    if (!prompt.trim()) {
-      setError('Please enter a prompt.');
+    if (!selectedDocument || components.length === 0) {
+      setError('Please select a document first.');
       return;
     }
 
@@ -74,28 +63,89 @@ function App() {
     setIsLoading(true);
     setError(null);
     setGeneratedImage(null);
+    setOverlayStatus(null);
+    setExtractionProgress(null);
 
     try {
+      const companyName = (selectedDocument.company_name || 'pharma') as string;
+      const brandName = (selectedDocument.brand_name || selectedDocument.name || 'product') as string;
+
+      // STEP 1: Extract content from component images
+      setIsExtracting(true);
+      setExtractionProgress('Step 1: Extracting content from components...');
+
+      let enrichedComponents = components;
+
+      // Check if any components have images but no content
+      const needsExtraction = components.some(c => c.image_base64 && !c.content);
+
+      if (needsExtraction) {
+        enrichedComponents = await extractAllContent(
+          components,
+          (done, total, current) => {
+            setExtractionProgress(`Extracting ${current}... (${done}/${total})`);
+          }
+        );
+
+        // Log extraction summary
+        const summary = getExtractionSummary(enrichedComponents);
+        console.log('Content extraction complete:', summary);
+      }
+
+      setIsExtracting(false);
+      setExtractionProgress('Step 2: Building prompt with extracted content...');
+
+      // STEP 2: Build prompt with focus area using extracted content
+      const prompt = buildPromptFromComponents(enrichedComponents, focusArea);
+
+      // Build labeled content with properly separated logos and design references
+      const labeledContent = buildApiContent(prompt, enrichedComponents);
+
+      setExtractionProgress('Step 3: Generating LBL with AI + reference images...');
+
+      // STEP 3: Generate image (reference images from /reference folder are added automatically)
       const result = await generateImage({
-        prompt: prompt.trim(),
-        company,
-        brand,
-        theme,
-        language,
-        referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+        prompt,
+        company: companyName.toLowerCase(),
+        brand: brandName.toLowerCase(),
+        labeledContent,
+        includeDesignReferences: true, // Include reference folder images
+        aspectRatio: '16:9',
       });
 
-      setGeneratedImage(result.imageBase64);
-      setImageMimeType(result.mimeType);
+      let finalImage = result.imageBase64;
+
+      // Apply logo overlay
+      setOverlayStatus('Overlaying logos...');
+      try {
+        finalImage = await overlayLogos(finalImage, components, {
+          companyLogoPosition: 'top-left',
+          brandLogoPosition: 'top-right',
+          logoMaxWidthPercent: 12,
+          logoMaxHeightPercent: 15,
+          padding: 25,
+        });
+        setOverlayStatus('LBL generated successfully!');
+      } catch (logoErr) {
+        console.warn('Logo overlay failed:', logoErr);
+        setOverlayStatus('Generated (logo overlay skipped)');
+      }
+
+      setGeneratedImage({
+        image: finalImage,
+        mimeType: result.mimeType,
+      });
     } catch (err) {
       console.error('Error generating image:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate image. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsExtracting(false);
+      setExtractionProgress(null);
     }
-  }, [prompt, company, brand, theme, language, referenceImages]);
+  }, [selectedDocument, components, focusArea]);
 
-  const canGenerate = prompt.trim().length > 0 && !isLoading;
+  const canGenerate = selectedDocument && components.length > 0 && !isLoading;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
@@ -127,7 +177,7 @@ function App() {
                 <p className={`text-xs transition-colors duration-300 ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-500'
                 }`}>
-                  Pharmaceutical Marketing Asset Creator
+                  Component-Based Asset Creator
                 </p>
               </div>
             </button>
@@ -136,7 +186,7 @@ function App() {
                 ? 'text-indigo-300 bg-indigo-900/50'
                 : 'text-indigo-700 bg-indigo-50'
             }`}>
-              
+              v2.0
             </span>
           </div>
         </div>
@@ -156,9 +206,11 @@ function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <p className={`text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}>API Configuration Required</p>
+                <p className={`text-sm font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}>Configuration Required</p>
                 <p className={`text-sm mt-1 ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>
-                  Create a <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${isDarkMode ? 'bg-amber-900/50' : 'bg-amber-100'}`}>.env</code> file with <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${isDarkMode ? 'bg-amber-900/50' : 'bg-amber-100'}`}>VITE_GEMINI_API_KEY=your_key</code>
+                  Add <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${isDarkMode ? 'bg-amber-900/50' : 'bg-amber-100'}`}>VITE_GEMINI_API_KEY</code>,{' '}
+                  <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${isDarkMode ? 'bg-amber-900/50' : 'bg-amber-100'}`}>VITE_SUPABASE_URL</code>, and{' '}
+                  <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${isDarkMode ? 'bg-amber-900/50' : 'bg-amber-100'}`}>VITE_SUPABASE_ANON_KEY</code> to .env
                 </p>
               </div>
             </div>
@@ -168,61 +220,60 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Panel - Input */}
           <div className="space-y-6">
+            {/* Product Selection (replaces File Upload) */}
             <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
             }`}>
               <div className={`px-6 py-4 border-b transition-colors duration-300 ${
                 isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
               }`}>
-                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Source Document</h2>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Upload your reference LBL for redesign</p>
+                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Select Product
+                </h2>
+                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Load components from repository
+                </p>
               </div>
               <div className="p-6">
-                <FileUpload
-                  onFileSelect={handleFileSelect}
-                  file={file}
-                  previewUrls={previewUrls}
+                <ProductSelect
+                  onProductSelect={handleDocumentSelect}
                   isDarkMode={isDarkMode}
                 />
               </div>
             </div>
 
+            {/* Generation Settings */}
             <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
             }`}>
               <div className={`px-6 py-4 border-b transition-colors duration-300 ${
                 isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
               }`}>
-                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Generation Settings</h2>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Configure output parameters</p>
+                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Generation Settings
+                </h2>
+                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Configure output parameters
+                </p>
               </div>
               <div className="p-6 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <CompanySelect
-                    value={company}
-                    onChange={handleCompanyChange}
-                    isDarkMode={isDarkMode}
-                  />
-                  <BrandSelect
-                    value={brand}
-                    onChange={setBrand}
-                    company={company}
-                    onCompanyChange={setCompany}
-                    isDarkMode={isDarkMode}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <ThemeSelect
-                    value={theme}
-                    onChange={setTheme}
-                    isDarkMode={isDarkMode}
-                  />
-                  <LanguageSelect
-                    value={language}
-                    onChange={setLanguage}
-                    isDarkMode={isDarkMode}
-                  />
-                </div>
+                {/* Selected Document Info */}
+                {selectedDocument && (
+                  <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-indigo-900/30' : 'bg-indigo-50'}`}>
+                    <p className={`text-sm font-medium ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                      {getDocumentDisplayName(selectedDocument)}
+                    </p>
+                    <p className={`text-xs ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                      {components.length} components loaded
+                    </p>
+                  </div>
+                )}
+
+                <FocusAreaSelect
+                  value={focusArea}
+                  onChange={setFocusArea}
+                  isDarkMode={isDarkMode}
+                />
               </div>
             </div>
 
@@ -235,24 +286,72 @@ function App() {
           </div>
 
           {/* Right Panel - Output */}
-          <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
-            isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-          }`}>
-            <div className={`px-6 py-4 border-b transition-colors duration-300 ${
-              isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
+          <div className="space-y-6">
+            <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
             }`}>
-              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Generated Output</h2>
-              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Your new LBL design will appear here</p>
+              <div className={`px-6 py-4 border-b transition-colors duration-300 ${
+                isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                      Generated Output
+                    </h2>
+                    <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {isLoading
+                        ? 'Generating LBL...'
+                        : generatedImage
+                        ? 'LBL generated'
+                        : 'Your LBL will appear here'}
+                    </p>
+                  </div>
+                  {generatedImage && (
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                      isDarkMode ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-100 text-indigo-700'
+                    }`}>
+                      {focusArea}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="p-6">
+                {/* Extraction/Generation Progress */}
+                {isLoading && extractionProgress && (
+                  <div className={`mb-4 p-3 rounded-lg text-sm ${
+                    isDarkMode ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-700'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      {extractionProgress}
+                    </div>
+                  </div>
+                )}
+
+                {/* Overlay Status Message */}
+                {overlayStatus && !isLoading && (
+                  <div className={`mb-4 p-3 rounded-lg text-sm ${
+                    overlayStatus.includes('successfully') || overlayStatus.includes('generated')
+                      ? isDarkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-50 text-green-700'
+                      : isDarkMode ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-700'
+                  }`}>
+                    {overlayStatus}
+                  </div>
+                )}
+
+                <ImageOutput
+                  imageData={generatedImage?.image || null}
+                  mimeType={generatedImage?.mimeType || 'image/png'}
+                  isLoading={isLoading}
+                  error={error}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
             </div>
-            <div className="p-6">
-              <ImageOutput
-                imageData={generatedImage}
-                mimeType={imageMimeType}
-                isLoading={isLoading}
-                error={error}
-                isDarkMode={isDarkMode}
-              />
-            </div>
+
           </div>
         </div>
       </main>
@@ -263,7 +362,7 @@ function App() {
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className={`text-xs text-center ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-            LBL Generator &middot; For internal use only &middot; Compliant with UCPMP 2025 Guidelines
+            LBL Generator v2.0 &middot; Component-Based &middot; Powered by SOMA 53 Components
           </p>
         </div>
       </footer>

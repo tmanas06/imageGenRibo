@@ -166,8 +166,8 @@ export async function overlayLogos(
   }
 ): Promise<string> {
   const {
-    companyLogoPosition = 'top-left',
-    brandLogoPosition = 'top-right',
+    companyLogoPosition = 'top-right',
+    brandLogoPosition = 'top-left',
     logoMaxWidthPercent = 12,
     logoMaxHeightPercent = 15,
     padding = 20,

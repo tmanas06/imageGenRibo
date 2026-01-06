@@ -6,8 +6,8 @@ export type FocusAreaType = 'Efficacy' | 'Safety' | 'Evidence';
 
 // Logo component IDs - these are treated as assets to INSERT, not references
 const LOGO_COMPONENT_IDS: { id: ComponentId; label: string; position: string }[] = [
-  { id: 'COMM_04', label: 'COMPANY_LOGO', position: 'TOP-LEFT' },
-  { id: 'INIT_02', label: 'BRAND_LOGO', position: 'TOP-RIGHT' },
+  { id: 'COMM_04', label: 'COMPANY_LOGO', position: 'TOP-RIGHT' },
+  { id: 'INIT_02', label: 'BRAND_LOGO', position: 'TOP-LEFT' },
 ];
 
 /**
@@ -78,7 +78,6 @@ You are PROVIDED the following reference images as inputs:
    → [BRAND_LOGO] image provided below
    RULE:
    • DO NOT include this logo in the generated image
-   • LEAVE the TOP-RIGHT corner EMPTY (no content, clear space)
    • The logo will be added automatically in post-processing
    • Use this image ONLY to extract brand colors for the design
 
@@ -86,7 +85,6 @@ You are PROVIDED the following reference images as inputs:
    → [COMPANY_LOGO] image provided below
    RULE:
    • DO NOT include this logo in the generated image
-   • LEAVE the TOP-LEFT corner EMPTY (no content, clear space)
    • The logo will be added automatically in post-processing
    • Use this image ONLY to extract company colors for the design
 

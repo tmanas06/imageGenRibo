@@ -77,15 +77,18 @@ You are PROVIDED the following reference images as inputs:
 1) BRAND LOGO IMAGE:
    → [BRAND_LOGO] image provided below
    RULE:
-   • Reproduce this logo EXACTLY as provided
-   • Do NOT redraw, reinterpret, recolor, stylize, or regenerate
-   • Preserve original proportions, colors, typography, and symbol
+   • DO NOT include this logo in the generated image
+   • LEAVE the TOP-RIGHT corner EMPTY (no content, clear space)
+   • The logo will be added automatically in post-processing
+   • Use this image ONLY to extract brand colors for the design
 
 2) COMPANY LOGO IMAGE:
    → [COMPANY_LOGO] image provided below
    RULE:
-   • Reproduce this logo EXACTLY as provided
-   • Do NOT redraw, reinterpret, recolor, stylize, or regenerate
+   • DO NOT include this logo in the generated image
+   • LEAVE the TOP-LEFT corner EMPTY (no content, clear space)
+   • The logo will be added automatically in post-processing
+   • Use this image ONLY to extract company colors for the design
 
 3) REFERENCE LBL DESIGN IMAGES:
    → [DESIGN_REFERENCE] images provided below
@@ -111,9 +114,11 @@ CANVAS & QUALITY
 BRANDING RULES (NON-NEGOTIABLE)
 ================================================================================
 • Overall color theme MUST align with ${brandColorTheme}
-• Brand and company logos must be visually clean and unobstructed
-• Logos must NOT overlap content
-• Logos must NOT be used as decorative textures or backgrounds
+• DO NOT GENERATE ANY LOGOS - logos will be added in post-processing
+• LEAVE TOP-LEFT CORNER EMPTY for company logo placement
+• LEAVE TOP-RIGHT CORNER EMPTY for brand logo placement
+• Reserve approximately 12% width x 15% height in each corner for logos
+• These empty spaces should blend with the background design
 
 ================================================================================
 PRODUCT IDENTITY (CONTENT PROVIDED AS-IS)
@@ -176,6 +181,8 @@ STRICT ANTI-PATTERNS (ABSOLUTELY FORBIDDEN)
 • No rigid grids that fragment the page
 • No childish icons or clip-art
 • No decorative shapes without informational purpose
+• NO LOGOS - do not generate, draw, or include any company or brand logos
+• Leave TOP-LEFT and TOP-RIGHT corners completely empty for logo overlay
 
 ================================================================================
 TYPOGRAPHY RULES
@@ -393,11 +400,11 @@ export function buildApiContent(
   // Add main prompt
   content.push({ text: prompt });
 
-  // Add LOGO images with labels (these must be inserted exactly)
+  // Add LOGO images for COLOR REFERENCE ONLY (logos are overlaid in post-processing)
   const logos = getLogoImages(components);
   for (const logo of logos) {
     content.push({
-      text: `[${logo.label}] - INSERT this exact image at ${logo.position}:`
+      text: `[${logo.label}] - COLOR REFERENCE ONLY. DO NOT include this logo in the image. Leave ${logo.position} corner EMPTY. Extract colors from this logo for the design palette:`
     });
     content.push({
       inlineData: {

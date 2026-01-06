@@ -174,47 +174,75 @@ Return ONLY the extracted text, nothing else.`;
 /**
  * Extract content from all components that have images
  * Returns components with populated content fields
+ * Uses sequential processing with delays to avoid rate limits
  */
 export async function extractAllContent(
   components: ComponentData[],
   onProgress?: (done: number, total: number, current: ComponentId) => void
 ): Promise<ComponentData[]> {
-  const componentsWithImages = components.filter(c => c.image_base64);
-  const total = componentsWithImages.length;
+  // Only process text-type components that need extraction
+  const textComponents = components.filter(c =>
+    c.image_base64 &&
+    !IMAGE_ONLY_COMPONENTS.includes(c.component_id) &&
+    EXTRACTION_PROMPTS[c.component_id]
+  );
+
+  const total = textComponents.length;
   let done = 0;
+
+  console.log(`[ContentExtractor] Starting extraction for ${total} text components (skipping ${components.length - total} image-only components)`);
 
   const results: ComponentData[] = [...components];
 
-  // Process in batches to avoid rate limits
-  const batchSize = 3;
+  // Process ONE component at a time with delays to avoid rate limits
+  for (const comp of textComponents) {
+    onProgress?.(done, total, comp.component_id);
 
-  for (let i = 0; i < componentsWithImages.length; i += batchSize) {
-    const batch = componentsWithImages.slice(i, i + batchSize);
+    console.log(`[ContentExtractor] Processing ${comp.component_id} (${done + 1}/${total})...`);
 
-    const extractions = await Promise.all(
-      batch.map(async (comp) => {
-        const result = await extractContentFromImage(comp.image_base64!, comp.component_id);
-        done++;
-        onProgress?.(done, total, comp.component_id);
-        return { comp, result };
-      })
-    );
+    // Try extraction with retry logic
+    let result: ExtractionResult | null = null;
+    let retries = 3;
+    let delay = 3000; // Start with 3 second delay on retry
 
-    // Update results
-    for (const { comp, result } of extractions) {
-      if (result.content) {
-        const idx = results.findIndex(c => c.id === comp.id);
-        if (idx !== -1) {
-          results[idx] = { ...results[idx], content: result.content };
+    while (retries > 0) {
+      result = await extractContentFromImage(comp.image_base64!, comp.component_id);
+
+      // Check if rate limited
+      if (result.error?.includes('429') || result.error?.includes('rate') || result.error?.includes('Too Many')) {
+        retries--;
+        if (retries > 0) {
+          console.log(`[ContentExtractor] Rate limited on ${comp.component_id}, waiting ${delay}ms before retry (${retries} retries left)...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff: 3s -> 6s -> 12s
         }
+      } else {
+        break; // Success or other error, stop retrying
       }
     }
 
-    // Small delay between batches to avoid rate limits
-    if (i + batchSize < componentsWithImages.length) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Update result if we got content
+    if (result?.content) {
+      const idx = results.findIndex(c => c.id === comp.id);
+      if (idx !== -1) {
+        results[idx] = { ...results[idx], content: result.content };
+        console.log(`[ContentExtractor] ✓ Extracted: ${comp.component_id} = "${result.content.substring(0, 50)}..."`);
+      }
+    } else if (result?.error) {
+      console.warn(`[ContentExtractor] ✗ Failed: ${comp.component_id} - ${result.error}`);
+    }
+
+    done++;
+
+    // Wait 2 seconds between EACH request to avoid rate limits
+    if (done < total) {
+      console.log(`[ContentExtractor] Waiting 2s before next request...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
+
+  onProgress?.(done, total, textComponents[textComponents.length - 1]?.component_id || 'DONE');
+  console.log(`[ContentExtractor] Extraction complete: ${done}/${total} components processed`);
 
   return results;
 }

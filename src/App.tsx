@@ -10,32 +10,251 @@ import type { ComponentData, Document } from './services/componentService';
 import { buildPromptFromComponents, buildApiContent } from './utils/promptBuilder';
 
 // Default prompt template
-const DEFAULT_PROMPT = `You are generating a high-fidelity, print-ready pharmaceutical Leave Behind Leaflet (LBL) for medical professionals.
+const DEFAULT_PROMPT = `You are generating a high-fidelity, print-ready pharmaceutical
+Leave Behind Leaflet (LBL) for medical professionals.
 
-CANVAS: Landscape, 2560x1440, print-ready quality
+================================================================================
+IMAGE REFERENCES (CRITICAL – DO NOT IGNORE)
+================================================================================
 
-BRANDING:
-• DO NOT include any logos - they will be added in post-processing
-• LEAVE TOP-LEFT corner EMPTY for brand logo
-• LEAVE TOP-RIGHT corner EMPTY for company logo
-• Use brand colors from the reference images
+You are PROVIDED the following reference images as inputs:
 
-DESIGN:
+1) BRAND LOGO IMAGE:
+   → [BRAND_LOGO] image provided below
+   RULE:
+   • DO NOT include this logo in the generated image
+   • The logo will be added automatically in post-processing
+   • Use this image ONLY to extract brand colors for the design
+
+2) COMPANY LOGO IMAGE:
+   → [COMPANY_LOGO] image provided below
+   RULE:
+   • DO NOT include this logo in the generated image
+   • The logo will be added automatically in post-processing
+   • Use this image ONLY to extract company colors for the design
+
+3) REFERENCE LBL DESIGN IMAGES:
+   → [DESIGN_REFERENCE] images provided below
+
+   PURPOSE:
+   • These images define the EXPECTED DESIGN QUALITY and VISUAL GRAMMAR
+   • They are NOT to be cloned or copied
+   • Use them ONLY to understand:
+     – professional pharmaceutical tone
+     – visual hierarchy
+     – information density
+     – modern LBL aesthetics (NOT PowerPoint)
+
+================================================================================
+CANVAS & QUALITY
+================================================================================
+• Orientation: LANDSCAPE
+• Resolution: 2560 x 1440
+• Print-ready, sharp, professional quality
+• Editorial / journal-grade design (NOT presentation slides)
+
+================================================================================
+BRANDING RULES (NON-NEGOTIABLE)
+================================================================================
+• Overall color theme MUST align with brand primary colors from logo and reference images
+• DO NOT GENERATE ANY LOGOS - logos will be added in post-processing
+• LEAVE TOP-LEFT CORNER EMPTY for brand logo placement
+• LEAVE TOP-RIGHT CORNER EMPTY for company logo placement
+• Reserve approximately 12% width x 15% height in each corner for logos
+• These empty spaces should blend with the background design
+
+================================================================================
+DESIGN INTENT (THIS IS THE CORE INSTRUCTION)
+================================================================================
+• This is NOT a slide, brochure, or PPT
+• The page must function as a single visual argument
+• One dominant visual idea should anchor the message
+• Supporting information should flow, connect, or orbit naturally
+• Numbers and outcomes must feel embedded into the design
+• Visual hierarchy must be obvious without boxes or bullets
+
+================================================================================
+ALLOWED VISUAL LANGUAGE
+================================================================================
 • Modern pharmaceutical infographic style
-• Professional, editorial-grade (NOT PowerPoint)
-• Clear visual hierarchy
-• Abstract scientific motifs allowed
+• Abstract scientific motifs (curves, gradients, molecular hints)
+• Visual metaphors for reduction, improvement, stability, protection
+• Subtle depth and layering is allowed
 
-FORBIDDEN:
-• No logos (added later)
+================================================================================
+STRICT ANTI-PATTERNS (ABSOLUTELY FORBIDDEN)
+================================================================================
+• No PowerPoint-style layouts
 • No bullet lists
 • No boxed content panels
-• No PowerPoint-style layouts
+• No equal-weight text blocks
+• No rigid grids that fragment the page
+• No childish icons or clip-art
+• No decorative shapes without informational purpose
+• NO LOGOS - do not generate, draw, or include any company or brand logos
+• Leave TOP-LEFT and TOP-RIGHT corners completely empty for logo overlay
 
-REGULATORY FOOTER:
+================================================================================
+TYPOGRAPHY RULES
+================================================================================
+• Professional pharmaceutical typography
+• Short, precise phrases only (no paragraphs)
+• Clear hierarchy: dominant → supporting → regulatory
+• Scientific, credible tone — not marketing hype
+
+================================================================================
+REGULATORY FOOTER
+================================================================================
+Include the following text EXACTLY, unobtrusively:
 For the use of a Registered Medical Practitioner, Hospital, or Laboratory only
 
-Generate ONE final image only.`;
+================================================================================
+OUTPUT
+================================================================================
+• Generate ONE final image only
+• No explanations, labels, wireframes, or commentary
+• The result must look like a professionally designed pharmaceutical LBL,
+  NOT a presentation slide or PPT`;
+
+// Fixed reference prompt (read-only, for reference)
+const FIXED_REFERENCE_PROMPT = `You are generating a high-fidelity, print-ready pharmaceutical
+Leave Behind Leaflet (LBL) for medical professionals.
+
+================================================================================
+IMAGE REFERENCES (CRITICAL – DO NOT IGNORE)
+================================================================================
+
+You are PROVIDED the following reference images as inputs:
+
+1) BRAND LOGO IMAGE:
+   → [BRAND_LOGO] image provided below
+   RULE:
+   • DO NOT include this logo in the generated image
+   • The logo will be added automatically in post-processing
+   • Use this image ONLY to extract brand colors for the design
+
+2) COMPANY LOGO IMAGE:
+   → [COMPANY_LOGO] image provided below
+   RULE:
+   • DO NOT include this logo in the generated image
+   • The logo will be added automatically in post-processing
+   • Use this image ONLY to extract company colors for the design
+
+3) REFERENCE LBL DESIGN IMAGES:
+   → [DESIGN_REFERENCE] images provided below
+
+   PURPOSE:
+   • These images define the EXPECTED DESIGN QUALITY and VISUAL GRAMMAR
+   • They are NOT to be cloned or copied
+   • Use them ONLY to understand:
+     – professional pharmaceutical tone
+     – visual hierarchy
+     – information density
+     – modern LBL aesthetics (NOT PowerPoint)
+
+================================================================================
+CANVAS & QUALITY
+================================================================================
+• Orientation: LANDSCAPE
+• Resolution: 2560 x 1440
+• Print-ready, sharp, professional quality
+• Editorial / journal-grade design (NOT presentation slides)
+
+================================================================================
+BRANDING RULES (NON-NEGOTIABLE)
+================================================================================
+• Overall color theme MUST align with \${brandColorTheme}
+• DO NOT GENERATE ANY LOGOS - logos will be added in post-processing
+• LEAVE TOP-LEFT CORNER EMPTY for company logo placement
+• LEAVE TOP-RIGHT CORNER EMPTY for brand logo placement
+• Reserve approximately 12% width x 15% height in each corner for logos
+• These empty spaces should blend with the background design
+
+================================================================================
+PRODUCT IDENTITY (CONTENT PROVIDED AS-IS)
+================================================================================
+Brand Name:
+\${fullBrandName}
+
+Generic / Composition:
+\${genericComposition}
+
+Indication:
+\${indication}
+
+================================================================================
+FOCUS AREA LOGIC
+================================================================================
+ACTIVE FOCUS AREA:
+\${focusArea}
+(Example values: Efficacy | Safety | Evidence)
+
+ALL CONTENT PROVIDED FROM DATABASE:
+\${focusAreaContent}
+
+INSTRUCTIONS:
+• The ACTIVE focus area must visually dominate the page
+• Related content may appear only as supporting information
+• Do NOT label sections on the design (no "Efficacy", "Safety" headers)
+• The page must read as ONE integrated scientific message
+
+================================================================================
+DESIGN INTENT (THIS IS THE CORE INSTRUCTION)
+================================================================================
+• This is NOT a slide, brochure, or PPT
+• The page must function as a single visual argument
+• One dominant visual idea should anchor the message
+• Supporting information should flow, connect, or orbit naturally
+• Numbers and outcomes must feel embedded into the design
+• Visual hierarchy must be obvious without boxes or bullets
+
+================================================================================
+FOCUS-SPECIFIC DESIGN DIRECTION
+================================================================================
+\${focusAreaDesign}
+
+================================================================================
+ALLOWED VISUAL LANGUAGE
+================================================================================
+• Modern pharmaceutical infographic style
+• Abstract scientific motifs (curves, gradients, molecular hints)
+• Visual metaphors for reduction, improvement, stability, protection
+• Subtle depth and layering is allowed
+
+================================================================================
+STRICT ANTI-PATTERNS (ABSOLUTELY FORBIDDEN)
+================================================================================
+• No PowerPoint-style layouts
+• No bullet lists
+• No boxed content panels
+• No equal-weight text blocks
+• No rigid grids that fragment the page
+• No childish icons or clip-art
+• No decorative shapes without informational purpose
+• NO LOGOS - do not generate, draw, or include any company or brand logos
+• Leave TOP-LEFT and TOP-RIGHT corners completely empty for logo overlay
+
+================================================================================
+TYPOGRAPHY RULES
+================================================================================
+• Professional pharmaceutical typography
+• Short, precise phrases only (no paragraphs)
+• Clear hierarchy: dominant → supporting → regulatory
+• Scientific, credible tone — not marketing hype
+
+================================================================================
+REGULATORY FOOTER
+================================================================================
+Include the following text EXACTLY, unobtrusively:
+\${disclaimer}
+
+================================================================================
+OUTPUT
+================================================================================
+• Generate ONE final image only
+• No explanations, labels, wireframes, or commentary
+• The result must look like a professionally designed pharmaceutical LBL,
+  NOT a presentation slide or PPT`;
 
 // Default theme-specific prompts
 const DEFAULT_THEME_PROMPTS: Record<string, string> = {
@@ -342,10 +561,10 @@ ${extractedContent}`;
           </div>
         )}
 
-        <div className="space-y-8">
-          {/* Input Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* LEFT COLUMN - Fixed/Reference Content */}
           <div className="space-y-6">
-            {/* Product Selection (replaces File Upload) */}
+            {/* Product Selection */}
             <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
             }`}>
@@ -367,6 +586,34 @@ ${extractedContent}`;
               </div>
             </div>
 
+            {/* Fixed Reference Prompt (Read-only) */}
+            <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
+            }`}>
+              <div className={`px-6 py-4 border-b transition-colors duration-300 ${
+                isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
+              }`}>
+                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Reference Prompt (Read-only)
+                </h2>
+                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Full prompt structure for reference
+                </p>
+              </div>
+              <div className="p-6">
+                <pre className={`w-full p-4 rounded-lg border text-xs font-mono overflow-auto max-h-[600px] whitespace-pre-wrap ${
+                  isDarkMode
+                    ? 'bg-slate-900 border-slate-600 text-slate-300'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  {FIXED_REFERENCE_PROMPT}
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN - Editable Options */}
+          <div className="space-y-6">
             {/* Generation Settings */}
             <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
@@ -670,10 +917,8 @@ ${extractedContent}`;
               isLoading={isLoading}
               isDarkMode={isDarkMode}
             />
-          </div>
 
-          {/* Output Section */}
-          <div className="space-y-6">
+            {/* Output Section */}
             <div className={`rounded-xl border shadow-sm overflow-hidden transition-colors duration-300 ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
             }`}>
@@ -738,7 +983,6 @@ ${extractedContent}`;
                 />
               </div>
             </div>
-
           </div>
         </div>
       </main>

@@ -9,7 +9,7 @@ import { extractAllContent, getExtractionSummary } from './services/contentExtra
 import type { ComponentData, Document } from './services/componentService';
 import { buildPromptFromComponents, buildApiContent } from './utils/promptBuilder';
 
-// Default prompt template
+// Default prompt template (editable version with ${variables})
 const DEFAULT_PROMPT = `You are generating a high-fidelity, print-ready pharmaceutical
 Leave Behind Leaflet (LBL) for medical professionals.
 
@@ -56,12 +56,40 @@ CANVAS & QUALITY
 ================================================================================
 BRANDING RULES (NON-NEGOTIABLE)
 ================================================================================
-• Overall color theme MUST align with brand primary colors from logo and reference images
+• Overall color theme MUST align with \${brandColorTheme}
 • DO NOT GENERATE ANY LOGOS - logos will be added in post-processing
-• LEAVE TOP-LEFT CORNER EMPTY for brand logo placement
-• LEAVE TOP-RIGHT CORNER EMPTY for company logo placement
+• LEAVE TOP-LEFT CORNER EMPTY for company logo placement
+• LEAVE TOP-RIGHT CORNER EMPTY for brand logo placement
 • Reserve approximately 12% width x 15% height in each corner for logos
 • These empty spaces should blend with the background design
+
+================================================================================
+PRODUCT IDENTITY (CONTENT PROVIDED AS-IS)
+================================================================================
+Brand Name:
+\${fullBrandName}
+
+Generic / Composition:
+\${genericComposition}
+
+Indication:
+\${indication}
+
+================================================================================
+FOCUS AREA LOGIC
+================================================================================
+ACTIVE FOCUS AREA:
+\${focusArea}
+(Example values: Efficacy | Safety | Evidence)
+
+ALL CONTENT PROVIDED FROM DATABASE:
+\${focusAreaContent}
+
+INSTRUCTIONS:
+• The ACTIVE focus area must visually dominate the page
+• Related content may appear only as supporting information
+• Do NOT label sections on the design (no "Efficacy", "Safety" headers)
+• The page must read as ONE integrated scientific message
 
 ================================================================================
 DESIGN INTENT (THIS IS THE CORE INSTRUCTION)
@@ -72,6 +100,11 @@ DESIGN INTENT (THIS IS THE CORE INSTRUCTION)
 • Supporting information should flow, connect, or orbit naturally
 • Numbers and outcomes must feel embedded into the design
 • Visual hierarchy must be obvious without boxes or bullets
+
+================================================================================
+FOCUS-SPECIFIC DESIGN DIRECTION
+================================================================================
+\${focusAreaDesign}
 
 ================================================================================
 ALLOWED VISUAL LANGUAGE
@@ -106,7 +139,7 @@ TYPOGRAPHY RULES
 REGULATORY FOOTER
 ================================================================================
 Include the following text EXACTLY, unobtrusively:
-For the use of a Registered Medical Practitioner, Hospital, or Laboratory only
+\${disclaimer}
 
 ================================================================================
 OUTPUT
